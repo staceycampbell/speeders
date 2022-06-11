@@ -11,8 +11,18 @@
 
 #define PLANE_COUNT 200
 
+typedef struct fastest_t {
+	int32_t speed;
+	int32_t altitude;
+	time_t seen;
+	double distance;
+	float latitude;
+	float longitude;
+} fastest_t;
+
 typedef struct plane_t {
 	uint32_t valid;
+	uint32_t speeder;
 	uint32_t icao;
 	time_t last_seen;
 	time_t last_speed;
@@ -23,7 +33,7 @@ typedef struct plane_t {
 	float longitude;
 	int32_t speed;
 	int32_t altitude;
-	time_t last_reported;
+	fastest_t fastest;
 } plane_t;
 
 static int PlaneListCount;
@@ -73,9 +83,8 @@ CalcDistance(double lat1, double lon1, double lat2, double lon2)
 }
 
 static void
-ReportBadPlane(plane_t *plane)
+RecordBadPlane(plane_t *plane)
 {
-	time_t now;
 	time_t speed_alt_time_gap;
 	double dist;
 	double lat_radians, lon_radians;
@@ -89,16 +98,21 @@ ReportBadPlane(plane_t *plane)
 	if (speed_alt_time_gap >= 3)
 		return; // gap between altitude and speed recording times, might not have been speeding
 	
-	now = time(0);
-	if (now - plane->last_reported < 600)
-		return; // don't spam the chat
-
 	lat_radians = DegreesToRadians(plane->latitude);
 	lon_radians = DegreesToRadians(plane->longitude);
 	dist = CalcDistance(ZeroLatRadians, ZeroLonRadians, lat_radians, lon_radians);
 	
-	plane->last_reported = now;
-	printf("%X %s %d %d %f %f %f\n", plane->icao, plane->callsign, plane->altitude, plane->speed, dist, plane->latitude, plane->longitude);
+	if (plane->speed > plane->fastest.speed)
+	{
+		plane->fastest.speed = plane->speed;
+		plane->fastest.altitude = plane->altitude;
+		plane->fastest.seen = time(0);
+		plane->fastest.distance = dist;
+		plane->fastest.latitude = plane->latitude;
+		plane->fastest.longitude = plane->longitude;
+	}
+
+	plane->speeder = 1;
 }
 
 static void
@@ -108,7 +122,7 @@ DetectBadPlanes(plane_t planes[PLANE_COUNT])
 
 	for (i = 0; i < PlaneListCount; ++i)
 		if (planes[i].valid && planes[i].latlong_valid && planes[i].altitude < 10000 && planes[i].speed > 250)
-			ReportBadPlane(&planes[i]);
+			RecordBadPlane(&planes[i]);
 }
 
 static plane_t *
@@ -124,6 +138,7 @@ InsertPlane(plane_t planes[PLANE_COUNT], uint32_t icao)
 		PlaneListCount = i;
 
 	planes[i].valid = 1;
+	planes[i].speeder = 0;
 	planes[i].icao = icao;
 	planes[i].last_seen = 0;
 	planes[i].last_speed = 0;
@@ -132,7 +147,10 @@ InsertPlane(plane_t planes[PLANE_COUNT], uint32_t icao)
 	planes[i].latlong_valid = 0;
 	planes[i].speed = -1;
 	planes[i].altitude = -100000;
-	planes[i].last_reported = 0;
+	
+	planes[i].fastest.speed = 0;
+	planes[i].fastest.altitude = 0;
+	planes[i].fastest.seen = 0;
 
 	return &planes[i];
 }
@@ -248,6 +266,18 @@ ProcessPlane(char **pp, plane_t planes[PLANE_COUNT], uint32_t message_id, uint32
 }
 
 static void
+ReportBadPlane(plane_t *plane)
+{
+	printf("%X %s %d %d %f %f %f\n", plane->icao, plane->callsign,
+	       plane->fastest.altitude,
+	       plane->fastest.speed,
+	       plane->fastest.distance,
+	       plane->fastest.latitude,
+	       plane->fastest.longitude);
+}
+
+
+static void
 CleanPlanes(plane_t planes[PLANE_COUNT])
 {
 	int i;
@@ -260,7 +290,11 @@ CleanPlanes(plane_t planes[PLANE_COUNT])
 		{
 			duration = now - planes[i].last_seen;
 			if (duration > 10)
+			{
+				if (planes[i].speeder)
+					ReportBadPlane(&planes[i]);
 				planes[i].valid = 0;
+			}
 		}
 	}
 }
