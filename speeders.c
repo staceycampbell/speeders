@@ -9,9 +9,16 @@
 #define ZERO_LAT 34.17074351801564
 #define ZERO_LON -118.60582458967741
 
+#define FAA_SPEED_LIMIT 250 // FAA speed limit in kt
+#define FAA_SPEED_ALTITUDE 10000 // ...at or below this altitude
+
+#define NAUGHTY_SPEED (FAA_SPEED_LIMIT + 30) // fast!
+#define NAUGHTY_ALTITUDE (FAA_SPEED_ALTITUDE - 1000) // low!
+
 #define PLANE_COUNT 200
 
 typedef struct fastest_t {
+	double naughty;
 	int32_t speed;
 	int32_t altitude;
 	time_t seen;
@@ -88,6 +95,7 @@ RecordBadPlane(plane_t *plane)
 	time_t speed_alt_time_gap;
 	double dist;
 	double lat_radians, lon_radians;
+	double naughty;
 
 	if (plane->callsign[0] == '\0')
 		return; // speeders will eventually reveal their callsign
@@ -97,13 +105,19 @@ RecordBadPlane(plane_t *plane)
 		speed_alt_time_gap = -speed_alt_time_gap;
 	if (speed_alt_time_gap >= 3)
 		return; // gap between altitude and speed recording times, might not have been speeding
+
+	if (plane->altitude <= 0)
+		return; // yikes
 	
 	lat_radians = DegreesToRadians(plane->latitude);
 	lon_radians = DegreesToRadians(plane->longitude);
 	dist = CalcDistance(ZeroLatRadians, ZeroLonRadians, lat_radians, lon_radians);
+
+	naughty = (((double)FAA_SPEED_ALTITUDE / (double)plane->altitude) + (plane->speed / (double)FAA_SPEED_LIMIT)) / 2.0;
 	
-	if (plane->speed > plane->fastest.speed)
+	if (naughty > plane->fastest.naughty)
 	{
+		plane->fastest.naughty = naughty;
 		plane->fastest.speed = plane->speed;
 		plane->fastest.altitude = plane->altitude;
 		plane->fastest.seen = time(0);
@@ -121,7 +135,7 @@ DetectBadPlanes(plane_t planes[PLANE_COUNT])
 	int i;
 
 	for (i = 0; i < PlaneListCount; ++i)
-		if (planes[i].valid && planes[i].latlong_valid && planes[i].altitude < 10000 && planes[i].speed > 250)
+		if (planes[i].valid && planes[i].latlong_valid && planes[i].altitude < NAUGHTY_ALTITUDE && planes[i].speed >= NAUGHTY_SPEED)
 			RecordBadPlane(&planes[i]);
 }
 
@@ -147,7 +161,8 @@ InsertPlane(plane_t planes[PLANE_COUNT], uint32_t icao)
 	planes[i].latlong_valid = 0;
 	planes[i].speed = -1;
 	planes[i].altitude = -100000;
-	
+
+	planes[i].fastest.naughty = 0;
 	planes[i].fastest.speed = 0;
 	planes[i].fastest.altitude = 0;
 	planes[i].fastest.seen = 0;
@@ -268,12 +283,13 @@ ProcessPlane(char **pp, plane_t planes[PLANE_COUNT], uint32_t message_id, uint32
 static void
 ReportBadPlane(plane_t *plane)
 {
-	printf("%X %s %d %d %f %f %f\n", plane->icao, plane->callsign,
+	printf("%X %s %d %d %f %f %f (naughty %f)\n", plane->icao, plane->callsign,
 	       plane->fastest.altitude,
 	       plane->fastest.speed,
 	       plane->fastest.distance,
 	       plane->fastest.latitude,
-	       plane->fastest.longitude);
+	       plane->fastest.longitude,
+	       plane->fastest.naughty);
 }
 
 
