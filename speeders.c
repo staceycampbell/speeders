@@ -4,6 +4,10 @@
 #include <string.h>
 #include <assert.h>
 #include <time.h>
+#include <math.h>
+
+#define ZERO_LAT 34.17074351801564
+#define ZERO_LON -118.60582458967741
 
 #define PLANE_COUNT 200
 
@@ -23,12 +27,58 @@ typedef struct plane_t {
 } plane_t;
 
 static int PlaneListCount;
+static double ZeroLatRadians, ZeroLonRadians;
+
+static double
+DegreesToRadians(double d)
+{
+	double r;
+
+	r = (d * M_PI) / 180.0;
+
+	return r;
+}
+
+static double
+rad2deg(double rad)
+{
+	return rad * 180.0 / M_PI;
+}
+
+static double
+CalcDistance(double lat1, double lon1, double lat2, double lon2)
+{
+	double theta, dist;
+	static const char unit = 'M';
+
+	theta = lon1 - lon2;
+	dist = sin(lat1) * sin(lat2) + cos(lat1) * cos(lat2) * cos(theta);
+	dist = acos(dist);
+	dist = rad2deg(dist);
+	dist = dist * 60.0 * 1.1515;
+	switch (unit)
+	{
+	default:
+	case 'M':
+		break;
+	case 'K':
+		dist = dist * 1.609344;
+		break;
+	case 'N':
+		dist = dist * 0.8684;
+		break;
+	}
+
+	return dist;
+}
 
 static void
 ReportBadPlane(plane_t *plane)
 {
 	time_t now;
 	time_t speed_alt_time_gap;
+	double dist;
+	double lat_radians, lon_radians;
 
 	if (plane->callsign[0] == '\0')
 		return; // speeders will eventually reveal their callsign
@@ -37,14 +87,18 @@ ReportBadPlane(plane_t *plane)
 	if (speed_alt_time_gap < 0)
 		speed_alt_time_gap = -speed_alt_time_gap;
 	if (speed_alt_time_gap >= 3)
-		return; // might not have been speeding
+		return; // gap between altitude and speed recording times, might not have been speeding
 	
 	now = time(0);
-	if (now - plane->last_reported < 60)
-		return;
+	if (now - plane->last_reported < 600)
+		return; // don't spam the chat
+
+	lat_radians = DegreesToRadians(plane->latitude);
+	lon_radians = DegreesToRadians(plane->longitude);
+	dist = CalcDistance(ZeroLatRadians, ZeroLonRadians, lat_radians, lon_radians);
 	
 	plane->last_reported = now;
-	printf("%X %s %d %d %f %f\n", plane->icao, plane->callsign, plane->altitude, plane->speed, plane->latitude, plane->longitude);
+	printf("%X %s %d %d %f %f %f\n", plane->icao, plane->callsign, plane->altitude, plane->speed, dist, plane->latitude, plane->longitude);
 }
 
 static void
@@ -219,6 +273,8 @@ main(int argc, char *argv[])
 	for (i = 0; i < PLANE_COUNT; ++i)
 		planes[i].valid = 0;
 	PlaneListCount = 0;
+	ZeroLatRadians = DegreesToRadians(ZERO_LAT);
+	ZeroLonRadians = DegreesToRadians(ZERO_LON);
 
 	while (fgets(buffer, sizeof(buffer), stdin))
 	{

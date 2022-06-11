@@ -1,4 +1,5 @@
 CFLAGS := -g -Wall
+LDLIBS := -lm
 
 speeders: speeders.o
 
