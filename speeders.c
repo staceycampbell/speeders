@@ -6,13 +6,18 @@
 #include <time.h>
 #include <math.h>
 
+#define NW_LAT 34.20336236633384
+#define NW_LON -118.65003500040142
+#define SE_LAT 34.13874066806624
+#define SE_LON -118.55910304337476
+
 #define ZERO_LAT 34.17074351801564
 #define ZERO_LON -118.60582458967741
 
 #define FAA_SPEED_LIMIT 250 // FAA speed limit in kt
 #define FAA_SPEED_ALTITUDE 10000 // ...at or below this altitude
 
-#define NAUGHTY_SPEED (FAA_SPEED_LIMIT + 30) // fast!
+#define NAUGHTY_SPEED (FAA_SPEED_LIMIT + 10) // fast!
 #define NAUGHTY_ALTITUDE (FAA_SPEED_ALTITUDE - 1000) // low!
 
 #define PLANE_COUNT 200
@@ -97,17 +102,18 @@ RecordBadPlane(plane_t *plane)
 	double lat_radians, lon_radians;
 	double naughty;
 
-	if (plane->callsign[0] == '\0')
-		return; // speeders will eventually reveal their callsign
-
 	speed_alt_time_gap = plane->last_speed - plane->last_location;
 	if (speed_alt_time_gap < 0)
 		speed_alt_time_gap = -speed_alt_time_gap;
 	if (speed_alt_time_gap >= 3)
-		return; // gap between altitude and speed recording times, might not have been speeding
+		return; // long gap between altitude and speed recording times, might not have been speeding
 
 	if (plane->altitude <= 0)
 		return; // yikes
+
+	if (plane->latitude > NW_LAT || plane->latitude < SE_LAT ||
+	    plane->longitude > SE_LON || plane->longitude < NW_LON)
+		return; // outside the zone of interest
 	
 	lat_radians = DegreesToRadians(plane->latitude);
 	lon_radians = DegreesToRadians(plane->longitude);
