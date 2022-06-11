@@ -157,7 +157,7 @@ FindPlane(plane_t planes[PLANE_COUNT], uint32_t icao)
 }
 
 static void
-ProcessMSG3(plane_t *plane)
+ProcessMSG3(char **pp, plane_t *plane)
 {
 	char *ch;
 	int field;
@@ -165,19 +165,22 @@ ProcessMSG3(plane_t *plane)
 	float lat, lon;
 
 	field = 0;
-	while ((ch = strtok(0, ",")) && field < 5)
+	while ((ch = strsep(pp, ",")) && field < 6)
+		++field;
+	if (ch == 0)
+		return;
+	altitude = strtol(ch, 0, 10);
+	if (altitude < -500 || altitude > 100000)
+		return;
+
+	field = 0;
+	while ((ch = strsep(pp, ",")) && field < 2)
 		++field;
 	if (ch == 0)
 		return;
 
-	altitude = strtol(ch, 0, 10);
-	if (altitude < -500 || altitude > 100000)
-		return;
-	ch = strtok(0, ",");
-	if (ch == 0)
-		return;
 	sscanf(ch, "%f", &lat);
-	ch = strtok(0, ",");
+	ch = strsep(pp, ",");
 	if (ch == 0)
 		return;
 	sscanf(ch, "%f", &lon);
@@ -190,17 +193,18 @@ ProcessMSG3(plane_t *plane)
 }
 
 static void
-ProcessMSG4(plane_t *plane)
+ProcessMSG4(char **pp, plane_t *plane)
 {
 	char *ch;
 	int field;
 	int32_t speed;
 
 	field = 0;
-	while ((ch = strtok(0, ",")) && field < 5)
+	while ((ch = strsep(pp, ",")) && field < 7)
 		++field;
 	if (ch == 0)
 		return;
+	
 	speed = strtol(ch, 0, 10);
 	if (speed <= 0 || speed > 3000)
 		return;
@@ -210,13 +214,13 @@ ProcessMSG4(plane_t *plane)
 }
 
 static void
-ProcessMSG1(plane_t *plane)
+ProcessMSG1(char **pp, plane_t *plane)
 {
 	char *ch;
 	int field;
 
 	field = 0;
-	while ((ch = strtok(0, ",")) && field < 5)
+	while ((ch = strsep(pp, ",")) && field < 5)
 		++field;
 	if (ch == 0 || *ch == '\0')
 		return;
@@ -224,7 +228,7 @@ ProcessMSG1(plane_t *plane)
 }
 
 static void
-ProcessPlane(plane_t planes[PLANE_COUNT], uint32_t message_id, uint32_t icao)
+ProcessPlane(char **pp, plane_t planes[PLANE_COUNT], uint32_t message_id, uint32_t icao)
 {
 	plane_t *plane;
 
@@ -232,13 +236,13 @@ ProcessPlane(plane_t planes[PLANE_COUNT], uint32_t message_id, uint32_t icao)
 	switch (message_id)
 	{
 	case 1 :
-		ProcessMSG1(plane);
+		ProcessMSG1(pp, plane);
 		break;
 	case 3 :
-		ProcessMSG3(plane);
+		ProcessMSG3(pp, plane);
 		break;
 	case 4 :
-		ProcessMSG4(plane);
+		ProcessMSG4(pp, plane);
 		break;
 	}
 }
@@ -267,6 +271,7 @@ main(int argc, char *argv[])
 	int i;
 	uint32_t message_id, icao;
 	char buffer[1024];
+	char *p;
 	char *ch;
 	plane_t planes[PLANE_COUNT];
 
@@ -278,22 +283,23 @@ main(int argc, char *argv[])
 
 	while (fgets(buffer, sizeof(buffer), stdin))
 	{
-		ch = strtok(buffer, ",");
+		p = buffer;
+		ch = strsep(&p, ",");
 		if (ch && strncmp(ch, "MSG", 3) == 0)
 		{
-			ch = strtok(0, ",");
+			ch = strsep(&p, ",");
 			if (ch)
 			{
 				message_id = strtoul(ch, 0, 0);
-				ch = strtok(0, ",");
+				ch = strsep(&p, ",");
 				if (ch)
 				{
-					ch = strtok(0, ",");
+					ch = strsep(&p, ",");
 					if (ch)
 					{
-						ch = strtok(0, ",");
+						ch = strsep(&p, ",");
 						icao = strtoul(ch, 0, 16);
-						ProcessPlane(planes, message_id, icao);
+						ProcessPlane(&p, planes, message_id, icao);
 					}
 				}
 			}
