@@ -19,7 +19,7 @@
 // ...and anywhere within Y miles of these coords
 #define ZERO_LAT   34.17074
 #define ZERO_LON -118.60582
-#define ZERO_WITHIN 3.0 // miles
+#define ZERO_WITHIN 5.0 // miles
 
 #define FAA_SPEED_LIMIT 250 // FAA speed limit in kt
 #define FAA_SPEED_ALTITUDE 10000 // ...at or below this MSL altitude in ft
@@ -317,7 +317,7 @@ ReportBadPlane(plane_t *plane, int enable_bot)
 		fprintf(fp, "from mastodon import Mastodon\n");
 		fprintf(fp, "mastodon = Mastodon(\n    access_token = '%s',\n    api_base_url = 'https://botsin.space/'\n)\n", BotToken);
 		fprintf(fp, "mastodon.status_post(\"BLEEP BLOOP: I just saw an aircraft with callsign %s (ICAO code %X) flying at %d kt at altitude %d feet MSL at "
-			"coordiantes %8.4f,%8.4f.\\nhttps://globe.adsbexchange.com/?icao=%x\")\n",
+			"coordinates %8.4f,%8.4f.\\nhttps://globe.adsbexchange.com/?icao=%x\")\n",
 			plane->callsign,
 			plane->icao,
 			plane->fastest.speed,
