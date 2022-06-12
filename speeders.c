@@ -8,32 +8,32 @@
 
 // Upper left and lower right coordinates of area where speeders
 // will be reported
-#define NW_LAT 34.20336236633384
-#define NW_LON -118.65003500040142
-#define SE_LAT 34.13874066806624
-#define SE_LON -118.55910304337476
+#define NW_LAT   34.20336
+#define NW_LON -118.65004
+#define SE_LAT   34.13874
+#define SE_LON -118.55910
 
-// somewhere within Y miles of these coords
-#define ZERO_LAT 34.17074351801564
-#define ZERO_LON -118.60582458967741
+// ...and anywhere within Y miles of these coords
+#define ZERO_LAT   34.17074
+#define ZERO_LON -118.60582
 #define ZERO_WITHIN 4.0 // miles
 
 #define FAA_SPEED_LIMIT 250 // FAA speed limit in kt
-#define FAA_SPEED_ALTITUDE 10000 // ...at or below this altitude in ft
+#define FAA_SPEED_ALTITUDE 10000 // ...at or below this MSL altitude in ft
 
 #define NAUGHTY_SPEED (FAA_SPEED_LIMIT + 20) // too fast!
 #define NAUGHTY_ALTITUDE (FAA_SPEED_ALTITUDE - 1000) // too low!
 
-#define PLANE_COUNT 200
+#define PLANE_COUNT 1024 // never more than about 70 planes visible from the Valley
 
 typedef struct fastest_t {
 	double naughty;
 	int32_t speed;
 	int32_t altitude;
-	time_t seen;
 	double distance;
 	float latitude;
 	float longitude;
+	time_t seen;
 } fastest_t;
 
 typedef struct plane_t {
@@ -158,7 +158,7 @@ InsertPlane(plane_t planes[PLANE_COUNT], uint32_t icao)
 	i = 0;
 	while (i < PLANE_COUNT && planes[i].valid)
 		++i;
-	assert(i < PLANE_COUNT);
+	assert(i < PLANE_COUNT); // if this pops something incredibly strange is happening
 	if (i > PlaneListCount)
 		PlaneListCount = i;
 
@@ -294,13 +294,16 @@ ProcessPlane(char **pp, plane_t planes[PLANE_COUNT], uint32_t message_id, uint32
 static void
 ReportBadPlane(plane_t *plane)
 {
-	printf("%X %s %d %d %4.1f %8.4f %8.4f (naughty %5.1f)\n", plane->icao, plane->callsign,
+	printf("%X %s %d %d %4.1f %8.4f %8.4f (naughty %4.1f) %s",
+	       plane->icao,
+	       plane->callsign,
 	       plane->fastest.altitude,
 	       plane->fastest.speed,
 	       plane->fastest.distance,
 	       plane->fastest.latitude,
 	       plane->fastest.longitude,
-	       plane->fastest.naughty);
+	       plane->fastest.naughty,
+	       ctime(&plane->fastest.seen));
 }
 
 
