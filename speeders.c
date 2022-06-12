@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <time.h>
 #include <math.h>
+#include <getopt.h>
 
 // Upper left and lower right coordinates of area where speeders
 // will be reported
@@ -75,25 +76,12 @@ static double
 CalcDistance(double lat1, double lon1, double lat2, double lon2)
 {
 	double theta, dist;
-	static const char unit = 'M';
 
 	theta = lon1 - lon2;
 	dist = sin(lat1) * sin(lat2) + cos(lat1) * cos(lat2) * cos(theta);
 	dist = acos(dist);
 	dist = rad2deg(dist);
 	dist = dist * 60.0 * 1.1515;
-	switch (unit)
-	{
-	default:
-	case 'M':
-		break;
-	case 'K':
-		dist = dist * 1.609344;
-		break;
-	case 'N':
-		dist = dist * 0.8684;
-		break;
-	}
 
 	return dist;
 }
