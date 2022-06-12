@@ -21,7 +21,7 @@
 #define FAA_SPEED_LIMIT 250 // FAA speed limit in kt
 #define FAA_SPEED_ALTITUDE 10000 // ...at or below this MSL altitude in ft
 
-#define NAUGHTY_SPEED (FAA_SPEED_LIMIT + 20) // too fast!
+#define NAUGHTY_SPEED (FAA_SPEED_LIMIT + 25) // too fast!
 #define NAUGHTY_ALTITUDE (FAA_SPEED_ALTITUDE - 1000) // too low!
 
 #define PLANE_COUNT 1024 // never more than about 70 planes visible from the Valley
