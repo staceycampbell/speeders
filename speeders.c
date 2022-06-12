@@ -16,7 +16,7 @@
 // ...and anywhere within Y miles of these coords
 #define ZERO_LAT   34.17074
 #define ZERO_LON -118.60582
-#define ZERO_WITHIN 4.0 // miles
+#define ZERO_WITHIN 3.0 // miles
 
 #define FAA_SPEED_LIMIT 250 // FAA speed limit in kt
 #define FAA_SPEED_ALTITUDE 10000 // ...at or below this MSL altitude in ft
