@@ -1,7 +1,7 @@
 # Record aircraft speeding near my Los Angeles neighborhood
 
 This program takes [dump1090-fa](https://github.com/flightaware/dump1090)
-Basestation text output from port 30003 and monitors aircraft for
+BaseStation text output from port 30003 and monitors aircraft for
 speeders.
 
 Typical usage:

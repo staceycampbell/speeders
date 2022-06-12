@@ -294,7 +294,7 @@ ProcessPlane(char **pp, plane_t planes[PLANE_COUNT], uint32_t message_id, uint32
 static void
 ReportBadPlane(plane_t *plane)
 {
-	printf("%X %s %d %d %4.1f %8.4f %8.4f (naughty %4.1f) %s",
+	printf("%X %s %d %d %4.1f %8.4f %8.4f (nv %4.1f) %s",
 	       plane->icao,
 	       plane->callsign,
 	       plane->fastest.altitude,
