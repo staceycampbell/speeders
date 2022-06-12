@@ -6,19 +6,23 @@
 #include <time.h>
 #include <math.h>
 
+// Upper left and lower right coordinates of area where speeders
+// will be reported
 #define NW_LAT 34.20336236633384
 #define NW_LON -118.65003500040142
 #define SE_LAT 34.13874066806624
 #define SE_LON -118.55910304337476
 
+// somewhere within Y miles of these coords
 #define ZERO_LAT 34.17074351801564
 #define ZERO_LON -118.60582458967741
+#define ZERO_WITHIN 4.0 // miles
 
 #define FAA_SPEED_LIMIT 250 // FAA speed limit in kt
-#define FAA_SPEED_ALTITUDE 10000 // ...at or below this altitude
+#define FAA_SPEED_ALTITUDE 10000 // ...at or below this altitude in ft
 
-#define NAUGHTY_SPEED (FAA_SPEED_LIMIT + 10) // fast!
-#define NAUGHTY_ALTITUDE (FAA_SPEED_ALTITUDE - 1000) // low!
+#define NAUGHTY_SPEED (FAA_SPEED_LIMIT + 20) // too fast!
+#define NAUGHTY_ALTITUDE (FAA_SPEED_ALTITUDE - 1000) // too low!
 
 #define PLANE_COUNT 200
 
@@ -39,7 +43,7 @@ typedef struct plane_t {
 	time_t last_seen;
 	time_t last_speed;
 	time_t last_location;
-	char callsign[64];
+	char callsign[16];
 	uint32_t latlong_valid;
 	float latitude;
 	float longitude;
@@ -111,16 +115,17 @@ RecordBadPlane(plane_t *plane)
 	if (plane->altitude <= 0)
 		return; // yikes
 
-	if (plane->latitude > NW_LAT || plane->latitude < SE_LAT ||
-	    plane->longitude > SE_LON || plane->longitude < NW_LON)
-		return; // outside the zone of interest
-	
+	// zone of interest is the rectangle defined by the xx_LAT,xx_LON defines plus within Y miles of ZeroLat,ZeroLon
 	lat_radians = DegreesToRadians(plane->latitude);
 	lon_radians = DegreesToRadians(plane->longitude);
 	dist = CalcDistance(ZeroLatRadians, ZeroLonRadians, lat_radians, lon_radians);
-
-	naughty = (((double)FAA_SPEED_ALTITUDE / (double)plane->altitude) + (plane->speed / (double)FAA_SPEED_LIMIT)) / 2.0;
+	if ((plane->latitude > NW_LAT || plane->latitude < SE_LAT || plane->longitude > SE_LON || plane->longitude < NW_LON) &&
+	    dist > ZERO_WITHIN) // miles
+		return; // outside the zone of interest
 	
+	naughty = ((double)FAA_SPEED_ALTITUDE - (double)plane->altitude) / (double)FAA_SPEED_ALTITUDE +
+		((double)plane->speed - (double)FAA_SPEED_LIMIT) / (double)FAA_SPEED_LIMIT;
+	naughty *= 100.0;
 	if (naughty > plane->fastest.naughty)
 	{
 		plane->fastest.naughty = naughty;
@@ -141,7 +146,7 @@ DetectBadPlanes(plane_t planes[PLANE_COUNT])
 	int i;
 
 	for (i = 0; i < PlaneListCount; ++i)
-		if (planes[i].valid && planes[i].latlong_valid && planes[i].altitude < NAUGHTY_ALTITUDE && planes[i].speed >= NAUGHTY_SPEED)
+		if (planes[i].valid && planes[i].latlong_valid && planes[i].altitude <= NAUGHTY_ALTITUDE && planes[i].speed >= NAUGHTY_SPEED)
 			RecordBadPlane(&planes[i]);
 }
 
@@ -163,7 +168,7 @@ InsertPlane(plane_t planes[PLANE_COUNT], uint32_t icao)
 	planes[i].last_seen = 0;
 	planes[i].last_speed = 0;
 	planes[i].last_location = 0;
-	memset(planes[i].callsign, 0, sizeof(planes[i].callsign));
+	strcpy(planes[i].callsign, "unknown ");
 	planes[i].latlong_valid = 0;
 	planes[i].speed = -1;
 	planes[i].altitude = -100000;
@@ -263,7 +268,7 @@ ProcessMSG1(char **pp, plane_t *plane)
 		++field;
 	if (ch == 0 || *ch == '\0')
 		return;
-	strncpy(plane->callsign, ch, sizeof(plane->callsign));
+	strncpy(plane->callsign, ch, sizeof(plane->callsign) - 1);
 }
 
 static void
@@ -289,7 +294,7 @@ ProcessPlane(char **pp, plane_t planes[PLANE_COUNT], uint32_t message_id, uint32
 static void
 ReportBadPlane(plane_t *plane)
 {
-	printf("%X %s %d %d %f %f %f (naughty %f)\n", plane->icao, plane->callsign,
+	printf("%X %s %d %d %4.1f %8.4f %8.4f (naughty %5.1f)\n", plane->icao, plane->callsign,
 	       plane->fastest.altitude,
 	       plane->fastest.speed,
 	       plane->fastest.distance,
