@@ -16,15 +16,16 @@
 #define SE_LAT   34.13874
 #define SE_LON -118.55910
 
-// ...and anywhere within Y miles of these coords
-#define ZERO_LAT   34.17074
-#define ZERO_LON -118.60582
-#define ZERO_WITHIN 4.0 // miles
+// ...including anywhere within Y miles of these coords
+// (currently intersection of Roscoe and Reseda Blvds)
+#define ZERO_LAT   34.2207384709914
+#define ZERO_LON -118.5360978679256
+#define ZERO_WITHIN 5.0 // miles
 
 #define FAA_SPEED_LIMIT 250 // FAA speed limit in kt
 #define FAA_SPEED_ALTITUDE 10000 // ...at or below this MSL altitude in ft
 
-#define NAUGHTY_SPEED (FAA_SPEED_LIMIT + 25) // too fast at or below NAUGHTY_ALTITUDE!
+#define NAUGHTY_SPEED (FAA_SPEED_LIMIT + 25) // too fast at or below NAUGHTY_ALTITUDE
 #define NAUGHTY_ALTITUDE (FAA_SPEED_ALTITUDE - 1750)
 
 #define PLANE_COUNT 1024 // never more than about 70 planes visible from the Valley
@@ -60,6 +61,53 @@ typedef struct plane_t {
 
 static int PlaneListCount;
 static double ZeroLatRadians, ZeroLonRadians;
+
+static char *Quotes[1024];
+static int QuoteCount;
+
+static void
+QuoteLoad(void)
+{
+	FILE *fp;
+	int len;
+	char buffer[2048];
+	
+	if ((fp = fopen("quotes.txt", "r")) == 0)
+	{
+		fprintf(stderr, "%s: cannot read quotes.txt\n", __PRETTY_FUNCTION__);
+		exit(1);
+	}
+	QuoteCount = 0;
+	while (QuoteCount < sizeof(Quotes) / sizeof(Quotes[0]) && fgets(buffer, sizeof(buffer), fp))
+	{
+		len = strlen(buffer);
+		buffer[len - 1] = '\0';
+		assert((Quotes[QuoteCount] = malloc(len + 1)) != 0);
+		strcpy(Quotes[QuoteCount], buffer);
+		++QuoteCount;
+	}
+}
+
+static char *
+QuotePicker(int32_t speed)
+{
+	int quote_index;
+	double quote_index_f;
+	char *quote;
+	static const int32_t super_fast = 350; // assume nobody is going much faster than this
+
+	// Quotes are ordered by snark. The faster the speed the snarkier the quote.
+	quote_index_f = (double)(speed - NAUGHTY_SPEED) / (double)(super_fast - NAUGHTY_SPEED) * (double)QuoteCount;
+	quote_index = quote_index_f + 0.5;
+	if (quote_index < 0)
+		quote_index = 0;
+	else
+		if (quote_index >= QuoteCount)
+			quote_index = QuoteCount - 1;
+	quote = Quotes[quote_index];
+
+	return quote;
+}
 
 static double
 DegreesToRadians(double d)
@@ -119,8 +167,8 @@ RecordBadPlane(plane_t *plane)
 	    dist > ZERO_WITHIN) // miles
 		return; // outside the zone of interest
 	
-	naughty = ((double)FAA_SPEED_ALTITUDE - (double)plane->altitude) / (double)FAA_SPEED_ALTITUDE +
-		((double)plane->speed - (double)FAA_SPEED_LIMIT) / (double)FAA_SPEED_LIMIT;
+	naughty = ((double)NAUGHTY_ALTITUDE - (double)plane->altitude) / (double)NAUGHTY_ALTITUDE +
+		((double)plane->speed - (double)NAUGHTY_SPEED) / (double)NAUGHTY_SPEED;
 	naughty *= 100.0;
 	if (naughty > plane->fastest.naughty)
 	{
@@ -142,7 +190,7 @@ DetectBadPlanes(plane_t planes[PLANE_COUNT])
 	int i;
 
 	for (i = 0; i < PlaneListCount; ++i)
-		if (planes[i].valid && planes[i].latlong_valid && planes[i].altitude < NAUGHTY_ALTITUDE && planes[i].speed >= NAUGHTY_SPEED)
+		if (planes[i].valid && planes[i].latlong_valid && planes[i].altitude <= NAUGHTY_ALTITUDE && planes[i].speed >= NAUGHTY_SPEED)
 			RecordBadPlane(&planes[i]);
 }
 
@@ -291,6 +339,7 @@ static void
 ReportBadPlane(plane_t *plane, int enable_bot)
 {
 	FILE *fp;
+	char *quote;
 	int i;
 	int system_status;
 	char callsign_trimmed[CALLSIGN_LEN];
@@ -322,16 +371,22 @@ ReportBadPlane(plane_t *plane, int enable_bot)
 				callsign_trimmed[i] = plane->callsign[i];
 			else
 				callsign_trimmed[i] = '\0';
+		
+		quote = QuotePicker(plane->fastest.speed);
+		
 		fprintf(fp, "from mastodon import Mastodon\n");
 		fprintf(fp, "mastodon = Mastodon(\n    access_token = '%s',\n    api_base_url = 'https://botsin.space/'\n)\n", BotToken);
-		fprintf(fp, "mastodon.status_post(\"BLEEP BLOOP: I just saw an aircraft with callsign %s (ICAO code %X) flying at %d kt"
-			"at altitude %d feet MSL at coordinates %8.4f,%8.4f.\\nhttps://globe.adsbexchange.com/?icao=%x\")\n",
+		fprintf(fp,
+			"mastodon.status_post(\"BLEEP BLOOP: I just saw an aircraft with callsign %s (ICAO code %X) flying at %d kt "
+			"at altitude %d feet MSL at coordinates %8.4f,%8.4f.\\n\\n%s\\n\\n"
+			"https://globe.adsbexchange.com/?icao=%x\")\n",
 			callsign_trimmed,
 			plane->icao,
 			plane->fastest.speed,
 			plane->fastest.altitude,
 			plane->fastest.latitude,
 			plane->fastest.longitude,
+			quote,
 			plane->icao);
 		fclose(fp);
 		sprintf(command, "/usr/bin/python3 %s", filename);
@@ -406,6 +461,7 @@ main(int argc, char *argv[])
 			fprintf(stderr, "%s: cannot stat bot token file %s\n", argv[0], BotToken);
 			exit(1);
 		}
+		QuoteLoad();
 	}
 
 	for (i = 0; i < PLANE_COUNT; ++i)
