@@ -24,8 +24,8 @@
 #define FAA_SPEED_LIMIT 250 // FAA speed limit in kt
 #define FAA_SPEED_ALTITUDE 10000 // ...at or below this MSL altitude in ft
 
-#define NAUGHTY_SPEED (FAA_SPEED_LIMIT + 30) // too fast at or below NAUGHTY_ALTITUDE!
-#define NAUGHTY_ALTITUDE (FAA_SPEED_ALTITUDE - 1000)
+#define NAUGHTY_SPEED (FAA_SPEED_LIMIT + 25) // too fast at or below NAUGHTY_ALTITUDE!
+#define NAUGHTY_ALTITUDE (FAA_SPEED_ALTITUDE - 1750)
 
 #define PLANE_COUNT 1024 // never more than about 70 planes visible from the Valley
 #define CALLSIGN_LEN 16
@@ -142,7 +142,7 @@ DetectBadPlanes(plane_t planes[PLANE_COUNT])
 	int i;
 
 	for (i = 0; i < PlaneListCount; ++i)
-		if (planes[i].valid && planes[i].latlong_valid && planes[i].altitude <= NAUGHTY_ALTITUDE && planes[i].speed >= NAUGHTY_SPEED)
+		if (planes[i].valid && planes[i].latlong_valid && planes[i].altitude < NAUGHTY_ALTITUDE && planes[i].speed >= NAUGHTY_SPEED)
 			RecordBadPlane(&planes[i]);
 }
 
