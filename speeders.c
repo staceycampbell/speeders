@@ -19,15 +19,16 @@
 // ...and anywhere within Y miles of these coords
 #define ZERO_LAT   34.17074
 #define ZERO_LON -118.60582
-#define ZERO_WITHIN 5.0 // miles
+#define ZERO_WITHIN 4.0 // miles
 
 #define FAA_SPEED_LIMIT 250 // FAA speed limit in kt
 #define FAA_SPEED_ALTITUDE 10000 // ...at or below this MSL altitude in ft
 
-#define NAUGHTY_SPEED (FAA_SPEED_LIMIT + 25) // too fast at or below NAUGHTY_ALTITUDE!
+#define NAUGHTY_SPEED (FAA_SPEED_LIMIT + 30) // too fast at or below NAUGHTY_ALTITUDE!
 #define NAUGHTY_ALTITUDE (FAA_SPEED_ALTITUDE - 1000)
 
 #define PLANE_COUNT 1024 // never more than about 70 planes visible from the Valley
+#define CALLSIGN_LEN 16
 
 static const char BotToken[] = "token.secret";
 
@@ -48,7 +49,7 @@ typedef struct plane_t {
 	time_t last_seen;
 	time_t last_speed;
 	time_t last_location;
-	char callsign[16];
+	char callsign[CALLSIGN_LEN];
 	uint32_t latlong_valid;
 	float latitude;
 	float longitude;
@@ -290,7 +291,9 @@ static void
 ReportBadPlane(plane_t *plane, int enable_bot)
 {
 	FILE *fp;
+	int i;
 	int system_status;
+	char callsign_trimmed[CALLSIGN_LEN];
 	char filename[256];
 	char command[1024];
 	static int fn_inc = 0;
@@ -314,11 +317,16 @@ ReportBadPlane(plane_t *plane, int enable_bot)
 			perror(__PRETTY_FUNCTION__);
 			exit(1);
 		}
+		for (i = 0; i < CALLSIGN_LEN; ++i)
+			if (plane->callsign[i] != ' ')
+				callsign_trimmed[i] = plane->callsign[i];
+			else
+				callsign_trimmed[i] = '\0';
 		fprintf(fp, "from mastodon import Mastodon\n");
 		fprintf(fp, "mastodon = Mastodon(\n    access_token = '%s',\n    api_base_url = 'https://botsin.space/'\n)\n", BotToken);
 		fprintf(fp, "mastodon.status_post(\"BLEEP BLOOP: I just saw an aircraft with callsign %s (ICAO code %X) flying at %d kt at altitude %d feet MSL at "
 			"coordinates %8.4f,%8.4f.\\nhttps://globe.adsbexchange.com/?icao=%x\")\n",
-			plane->callsign,
+			callsign_trimmed,
 			plane->icao,
 			plane->fastest.speed,
 			plane->fastest.altitude,
@@ -330,6 +338,8 @@ ReportBadPlane(plane_t *plane, int enable_bot)
 		system_status = system(command);
 		if (system_status)
 			fprintf(stderr, "%s: system(%s) returned status %d\n", __PRETTY_FUNCTION__, command, system_status);
+		else
+			unlink(filename);
 	}
 }
 
