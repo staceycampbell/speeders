@@ -11,10 +11,10 @@
 
 // Upper left and lower right coordinates of area where speeders
 // will be reported
-#define NW_LAT   34.20336
-#define NW_LON -118.65004
-#define SE_LAT   34.13874
-#define SE_LON -118.55910
+#define NW_LAT   34.23600433210118
+#define NW_LON -118.66328991689346
+#define SE_LAT   34.13903732825665
+#define SE_LON -118.54583715720831
 
 // ...including anywhere within Y miles of these coords
 // (currently intersection of Roscoe and Reseda Blvds)
@@ -22,11 +22,12 @@
 #define ZERO_LON -118.5360978679256
 #define ZERO_WITHIN 5.0 // miles
 
-#define FAA_SPEED_LIMIT 250 // FAA speed limit in kt
+#define FAA_SPEED_LIMIT 250 // FAA indicated speed limit in kt
 #define FAA_SPEED_ALTITUDE 10000 // ...at or below this MSL altitude in ft
 
-#define NAUGHTY_SPEED (FAA_SPEED_LIMIT + 25) // too fast at or below NAUGHTY_ALTITUDE
-#define NAUGHTY_ALTITUDE (FAA_SPEED_ALTITUDE - 1750)
+// ADS-B reported speed is groundspeed via GPS unit, https://aerotoolbox.com/airspeed-conversions
+#define NAUGHTY_SPEED (FAA_SPEED_LIMIT + 38) // true airspeed potentially too fast at or below NAUGHTY_ALTITUDE
+#define NAUGHTY_ALTITUDE (FAA_SPEED_ALTITUDE - 2000)
 
 #define PLANE_COUNT 1024 // never more than about 70 planes visible from the Valley
 #define CALLSIGN_LEN 16
@@ -34,6 +35,7 @@
 static const char BotToken[] = "token.secret";
 
 typedef struct fastest_t {
+	uint32_t initialized;
 	double naughty;
 	int32_t speed;
 	int32_t altitude;
@@ -167,11 +169,11 @@ RecordBadPlane(plane_t *plane)
 	    dist > ZERO_WITHIN) // miles
 		return; // outside the zone of interest
 	
-	naughty = ((double)NAUGHTY_ALTITUDE - (double)plane->altitude) / (double)NAUGHTY_ALTITUDE +
-		((double)plane->speed - (double)NAUGHTY_SPEED) / (double)NAUGHTY_SPEED;
+	naughty = ((double)plane->speed - (double)NAUGHTY_SPEED) / (double)NAUGHTY_SPEED;
 	naughty *= 100.0;
-	if (naughty > plane->fastest.naughty)
+	if (plane->speeder == 0 || naughty > plane->fastest.naughty)
 	{
+		plane->speeder = 1;
 		plane->fastest.naughty = naughty;
 		plane->fastest.speed = plane->speed;
 		plane->fastest.altitude = plane->altitude;
@@ -181,7 +183,6 @@ RecordBadPlane(plane_t *plane)
 		plane->fastest.longitude = plane->longitude;
 	}
 
-	plane->speeder = 1;
 }
 
 static void
@@ -216,11 +217,6 @@ InsertPlane(plane_t planes[PLANE_COUNT], uint32_t icao)
 	planes[i].latlong_valid = 0;
 	planes[i].speed = -1;
 	planes[i].altitude = -100000;
-
-	planes[i].fastest.naughty = 0;
-	planes[i].fastest.speed = 0;
-	planes[i].fastest.altitude = 0;
-	planes[i].fastest.seen = 0;
 
 	return &planes[i];
 }
