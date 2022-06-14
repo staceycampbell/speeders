@@ -27,7 +27,7 @@
 
 // ADS-B reported speed is groundspeed via GPS unit, https://aerotoolbox.com/airspeed-conversions
 #define NAUGHTY_SPEED (FAA_SPEED_LIMIT + 38) // true airspeed potentially too fast at or below NAUGHTY_ALTITUDE
-#define NAUGHTY_ALTITUDE (FAA_SPEED_ALTITUDE - 2000)
+#define NAUGHTY_ALTITUDE (FAA_SPEED_ALTITUDE - 1000)
 
 #define PLANE_COUNT 1024 // never more than about 70 planes visible from the Valley
 #define CALLSIGN_LEN 16

@@ -16,13 +16,12 @@ speed limit of 250 kt for aircraft flying below 10,000 feet MSL.
 See [14 CFR § 91.117](https://www.law.cornell.edu/cfr/text/14/91.117).
 
 Indicated speed is recorded at the aircraft with pitot tubes, so thanks
-to "atmospheric conditions" there will be a difference with the GPS
-groundspeed sent from the ADS-B system on the aircraft. The program
-allows for a 10% faster groundspeed; e.g. the aircraft might have a
-groundspeed of 275 kt but an indicated airspeed of 250 kt. We'll cut
-them some slack.
+to "atmospheric conditions" that airspeed will be less than the airspeed
+measured by the GPS in the ADS-B system on the aircraft. The program
+allows for a 15% faster groundspeed; e.g. the aircraft has a groundspeed
+of 288 kt but an indicated airspeed of 250 kt.
 
-It's fairly routine to catch aircraft not being compliant with this
-rule over the heavily populated San Fernando Valley area of
-Los Angeles. Especially over the roof of my house.
+It's not unusual to catch aircraft not being compliant with this rule
+over the heavily populated San Fernando Valley area of Los Angeles.
+Especially over the roof of my house.
 
