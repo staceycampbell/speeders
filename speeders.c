@@ -8,6 +8,7 @@
 #include <getopt.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include "castotas.h"
 
 // Upper left and lower right coordinates of area where speeders
 // will be reported
@@ -22,14 +23,14 @@
 #define ZERO_LON -118.5360978679256
 #define ZERO_WITHIN 5.0 // miles
 
-#define FAA_SPEED_LIMIT 250 // FAA indicated speed limit in kt
+#define FAA_SPEED_LIMIT_CAS 250 // FAA indicated speed limit in kt
 #define FAA_SPEED_ALTITUDE 10000 // ...at or below this MSL altitude in ft
 
 // ADS-B reported speed is groundspeed via GPS unit, https://aerotoolbox.com/airspeed-conversions
-#define NAUGHTY_SPEED (FAA_SPEED_LIMIT + 38) // true airspeed potentially too fast at or below NAUGHTY_ALTITUDE
-#define NAUGHTY_ALTITUDE (FAA_SPEED_ALTITUDE - 1000)
+#define NAUGHTY_SPEED_CAS (FAA_SPEED_LIMIT_CAS + 5) // give them some slack
+#define NAUGHTY_ALTITUDE (FAA_SPEED_ALTITUDE - 500) // give 'em a break over this altitude
 
-#define PLANE_COUNT 1024 // never more than about 70 planes visible from the Valley
+#define PLANE_COUNT 1024 // never more than about 70 planes visible from the casa
 #define CALLSIGN_LEN 16
 
 static const char BotToken[] = "token.secret";
@@ -37,6 +38,7 @@ static const char BotToken[] = "token.secret";
 typedef struct fastest_t {
 	uint32_t initialized;
 	double naughty;
+	int32_t naughty_speed_tas;
 	int32_t speed;
 	int32_t altitude;
 	double distance;
@@ -58,6 +60,7 @@ typedef struct plane_t {
 	float longitude;
 	int32_t speed;
 	int32_t altitude;
+	int32_t naughty_speed_tas;
 	fastest_t fastest;
 } plane_t;
 
@@ -91,15 +94,15 @@ QuoteLoad(void)
 }
 
 static char *
-QuotePicker(int32_t speed)
+QuotePicker(int32_t speed, int32_t naughty_speed_tas)
 {
 	int quote_index;
 	double quote_index_f;
 	char *quote;
-	static const int32_t super_fast = 350; // assume nobody is going much faster than this
+	static const int32_t super_fast = 340; // assume nobody is going much faster than this
 
 	// Quotes are ordered by snark. The faster the speed the snarkier the quote.
-	quote_index_f = (double)(speed - NAUGHTY_SPEED) / (double)(super_fast - NAUGHTY_SPEED) * (double)QuoteCount;
+	quote_index_f = (double)(speed - naughty_speed_tas) / (double)(super_fast - naughty_speed_tas) * (double)QuoteCount;
 	quote_index = quote_index_f + 0.5;
 	if (quote_index < 0)
 		quote_index = 0;
@@ -169,7 +172,7 @@ RecordBadPlane(plane_t *plane)
 	    dist > ZERO_WITHIN) // miles
 		return; // outside the zone of interest
 	
-	naughty = ((double)plane->speed - (double)NAUGHTY_SPEED) / (double)NAUGHTY_SPEED;
+	naughty = ((double)plane->speed - (double)plane->naughty_speed_tas) / (double)plane->naughty_speed_tas;
 	naughty *= 100.0;
 	if (plane->speeder == 0 || naughty > plane->fastest.naughty)
 	{
@@ -177,6 +180,7 @@ RecordBadPlane(plane_t *plane)
 		plane->fastest.naughty = naughty;
 		plane->fastest.speed = plane->speed;
 		plane->fastest.altitude = plane->altitude;
+		plane->fastest.naughty_speed_tas = plane->naughty_speed_tas;
 		plane->fastest.seen = time(0);
 		plane->fastest.distance = dist;
 		plane->fastest.latitude = plane->latitude;
@@ -191,7 +195,8 @@ DetectBadPlanes(plane_t planes[PLANE_COUNT])
 	int i;
 
 	for (i = 0; i < PlaneListCount; ++i)
-		if (planes[i].valid && planes[i].latlong_valid && planes[i].altitude <= NAUGHTY_ALTITUDE && planes[i].speed >= NAUGHTY_SPEED)
+		if (planes[i].valid && planes[i].latlong_valid && planes[i].altitude <= NAUGHTY_ALTITUDE &&
+		    planes[i].speed >= planes[i].naughty_speed_tas)
 			RecordBadPlane(&planes[i]);
 }
 
@@ -270,10 +275,11 @@ ProcessMSG3(char **pp, plane_t *plane)
 	sscanf(ch, "%f", &lon);
 	
 	plane->last_location = time(0);
-	plane->altitude = altitude;
 	plane->latlong_valid = 1;
+	plane->altitude = altitude;
 	plane->latitude = lat;
 	plane->longitude = lon;
+	plane->naughty_speed_tas = CAStoTAS(NAUGHTY_SPEED_CAS, altitude);
 }
 
 static void
@@ -343,7 +349,7 @@ ReportBadPlane(plane_t *plane, int enable_bot)
 	char command[1024];
 	static int fn_inc = 0;
 	
-	printf("%X %s %d %d %4.1f %8.4f %8.4f (nv %4.1f) %s",
+	printf("%X %s %d %d %4.1f %8.4f %8.4f (nv %.1f, tas est %d) %s",
 	       plane->icao,
 	       plane->callsign,
 	       plane->fastest.altitude,
@@ -352,6 +358,7 @@ ReportBadPlane(plane_t *plane, int enable_bot)
 	       plane->fastest.latitude,
 	       plane->fastest.longitude,
 	       plane->fastest.naughty,
+	       plane->fastest.naughty_speed_tas,
 	       ctime(&plane->fastest.seen));
 	if (enable_bot)
 	{
@@ -368,7 +375,7 @@ ReportBadPlane(plane_t *plane, int enable_bot)
 			else
 				callsign_trimmed[i] = '\0';
 		
-		quote = QuotePicker(plane->fastest.speed);
+		quote = QuotePicker(plane->fastest.speed, plane->fastest.naughty_speed_tas);
 		
 		fprintf(fp, "from mastodon import Mastodon\n");
 		fprintf(fp, "mastodon = Mastodon(\n    access_token = '%s',\n    api_base_url = 'https://botsin.space/'\n)\n", BotToken);

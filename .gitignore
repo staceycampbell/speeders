@@ -1,4 +1,4 @@
 speeders
-speeders.o
+*.o
 test.log
 token.secret

@@ -3,8 +3,9 @@
 #include <stdint.h>
 #include "castotas.h"
 
-// Calibrated Air Speed to True Air Speed
+// convert Calibrated Air Speed to True Air Speed
 // https://aviation.stackexchange.com/a/64251
+// cas in knots, altitude in feet
 
 int32_t
 CAStoTAS(int32_t cas, int32_t altitude)
@@ -13,7 +14,6 @@ CAStoTAS(int32_t cas, int32_t altitude)
 	double cas_mps;
 	double h;
 	double T;
-	double tas_mps;
 	static const double a0 = 340.3; // m/s is the speed of sound at sea level in the ISA,
 	static const double g = 9.80665; // m/s2 is the standard acceleration due to gravity,
 	static const double L = 0.0065; // K/m is the standard ISA temperature lapse rate,
@@ -37,9 +37,9 @@ CAStoTAS(int32_t cas, int32_t altitude)
 	double exp2 = exp0 * exp1 + 1;
 	double exp3 = pow(exp2, 2.0 / 7.0) - 1;
 	double exp4 = sevenRT_div_M * exp3;
+	double tas_mps = sqrt(exp4);
 
-	tas_mps = sqrt(exp4);
-	tas = tas_mps * 1.94384 + 0.5;
+	tas = tas_mps * 1.94384 + 0.5; // m/s to knots
 
-	return tas;
+	return tas; // knots
 }
