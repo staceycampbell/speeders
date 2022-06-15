@@ -18,7 +18,7 @@ CAStoTAS(int32_t cas, int32_t altitude)
 	static const double g = 9.80665; // m/s2 is the standard acceleration due to gravity,
 	static const double L = 0.0065; // K/m is the standard ISA temperature lapse rate,
 	static const double M = 0.0289644; // kg/mol is the molar mass of dry air,
-	static const double R = 8.3144598; // J/(mol⋅K) is the universal gas constant,
+	static const double R = 8.31446261815324; // J/(mol⋅K) is the universal gas constant,
 	static const double T0 = 288.15; // K is the static air temperature at sea level in the ISA.
 
 	cas_mps = (double)cas * 0.514444; // calibrate airspeed m/s

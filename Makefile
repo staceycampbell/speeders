@@ -1,5 +1,5 @@
 CC := cc
-CFLAGS := -O2 -Wall
+CFLAGS := -O3 -Wall
 LDLIBS := -lm
 
 OBJS := speeders.o castotas.o

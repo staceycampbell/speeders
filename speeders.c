@@ -12,22 +12,22 @@
 
 // Upper left and lower right coordinates of area where speeders
 // will be reported
-#define NW_LAT   34.23600433210118
-#define NW_LON -118.66328991689346
-#define SE_LAT   34.13903732825665
-#define SE_LON -118.54583715720831
+#define NW_LAT   34.23962554621634
+#define NW_LON -118.64947656671313
+#define SE_LAT   34.13681559402575
+#define SE_LON -118.35026457836128
 
 // ...including anywhere within Y miles of these coords
 // (currently intersection of Roscoe and Reseda Blvds)
 #define ZERO_LAT   34.2207384709914
 #define ZERO_LON -118.5360978679256
-#define ZERO_WITHIN 5.0 // miles
+#define ZERO_WITHIN 6.0 // miles
 
 #define FAA_SPEED_LIMIT_CAS 250 // FAA indicated speed limit in kt
 #define FAA_SPEED_ALTITUDE 10000 // ...at or below this MSL altitude in ft
 
 // ADS-B reported speed is groundspeed via GPS unit, https://aerotoolbox.com/airspeed-conversions
-#define NAUGHTY_SPEED_CAS (FAA_SPEED_LIMIT_CAS + 5) // give them some slack
+#define NAUGHTY_SPEED_CAS (FAA_SPEED_LIMIT_CAS + 6) // give them some slack
 #define NAUGHTY_ALTITUDE (FAA_SPEED_ALTITUDE - 500) // give 'em a break over this altitude
 
 #define PLANE_COUNT 1024 // never more than about 70 planes visible from the casa
@@ -99,7 +99,7 @@ QuotePicker(int32_t speed, int32_t naughty_speed_tas)
 	int quote_index;
 	double quote_index_f;
 	char *quote;
-	static const int32_t super_fast = 340; // assume nobody is going much faster than this
+	static const int32_t super_fast = 330; // assume nobody is going much faster than this
 
 	// Quotes are ordered by snark. The faster the speed the snarkier the quote.
 	quote_index_f = (double)(speed - naughty_speed_tas) / (double)(super_fast - naughty_speed_tas) * (double)QuoteCount;
