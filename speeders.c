@@ -28,7 +28,7 @@
 
 // ADS-B reported speed is groundspeed via GPS unit, https://aerotoolbox.com/airspeed-conversions
 #define NAUGHTY_SPEED_CAS (FAA_SPEED_LIMIT_CAS + 10) // give them some slack
-#define NAUGHTY_ALTITUDE (FAA_SPEED_ALTITUDE - 500) // give 'em a break over this altitude
+#define NAUGHTY_ALTITUDE (FAA_SPEED_ALTITUDE - 750) // give 'em a break over this altitude
 
 #define PLANE_COUNT 1024 // never more than about 70 planes visible from the casa
 #define CALLSIGN_LEN 16
