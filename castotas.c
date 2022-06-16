@@ -16,7 +16,7 @@ CAStoTAS(int32_t cas, int32_t altitude)
 	double T;
 	static const double a0 = 340.3; // m/s is the speed of sound at sea level in the ISA,
 	static const double g = 9.80665; // m/s2 is the standard acceleration due to gravity,
-	static const double L = 0.0065; // K/m is the standard ISA temperature lapse rate,
+	static const double L = 0.0065; // K/m is the standard ISA temperature lapse rate for the troposphere,
 	static const double M = 0.0289644; // kg/mol is the molar mass of dry air,
 	static const double R = 8.31446261815324; // J/(mol⋅K) is the universal gas constant,
 	static const double T0 = 288.15; // K is the static air temperature at sea level in the ISA.
@@ -25,7 +25,7 @@ CAStoTAS(int32_t cas, int32_t altitude)
 	h = (double)altitude * 0.3048; // altitude in m
 
 	// https://www.grc.nasa.gov/www/k-12/airplane/atmosmet.html
-	T = 15.04 - 0.00649 * h + 273.15; // approx static air temp in K
+	T = 15.04 - L * h + 273.15; // approx static air temp in K
 
 	double Lh_div_T0 = (L * h) / T0;
 	double neg_gM_div_RL = -((g * M) / (R * L));
