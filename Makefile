@@ -1,5 +1,5 @@
 CC := cc
-CFLAGS := -O3 -Wall
+CFLAGS := -O3 -mtune=native -Wall
 LDLIBS := -lm
 
 OBJS := speeders.o castotas.o
