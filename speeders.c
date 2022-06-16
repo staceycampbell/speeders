@@ -27,7 +27,7 @@
 #define FAA_SPEED_ALTITUDE 10000 // ...at or below this MSL altitude in ft
 
 // ADS-B reported speed is groundspeed via GPS unit, https://aerotoolbox.com/airspeed-conversions
-#define NAUGHTY_SPEED_CAS (FAA_SPEED_LIMIT_CAS + 6) // give them some slack
+#define NAUGHTY_SPEED_CAS (FAA_SPEED_LIMIT_CAS + 10) // give them some slack
 #define NAUGHTY_ALTITUDE (FAA_SPEED_ALTITUDE - 500) // give 'em a break over this altitude
 
 #define PLANE_COUNT 1024 // never more than about 70 planes visible from the casa
@@ -349,7 +349,7 @@ ReportBadPlane(plane_t *plane, int enable_bot)
 	char command[1024];
 	static int fn_inc = 0;
 	
-	printf("%X %s %d %d %4.1f %8.4f %8.4f (nv %.1f, tas est %d) %s",
+	printf("%X %s %d %d %4.1f %8.4f %8.4f (nv %4.1f, tas est %d) %s",
 	       plane->icao,
 	       plane->callsign,
 	       plane->fastest.altitude,
