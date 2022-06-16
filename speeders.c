@@ -27,8 +27,8 @@
 #define FAA_SPEED_ALTITUDE 10000 // ...at or below this MSL altitude in ft
 
 // ADS-B reported speed is groundspeed via GPS unit, https://aerotoolbox.com/airspeed-conversions
-#define NAUGHTY_SPEED_CAS (FAA_SPEED_LIMIT_CAS + 10) // give them some slack
-#define NAUGHTY_ALTITUDE (FAA_SPEED_ALTITUDE - 750) // give 'em a break over this altitude
+#define NAUGHTY_SPEED_CAS (FAA_SPEED_LIMIT_CAS + 15) // give them some slack
+#define NAUGHTY_ALTITUDE (FAA_SPEED_ALTITUDE - 1000) // give 'em a break over this altitude
 
 #define PLANE_COUNT 1024 // never more than about 70 planes visible from the casa
 #define CALLSIGN_LEN 16
@@ -99,7 +99,7 @@ QuotePicker(int32_t speed, int32_t naughty_speed_tas)
 	int quote_index;
 	double quote_index_f;
 	char *quote;
-	static const int32_t super_fast = 330; // assume nobody is going much faster than this
+	static const int32_t super_fast = 340; // assume nobody is going much faster than this
 
 	// Quotes are ordered by snark. The faster the speed the snarkier the quote.
 	quote_index_f = (double)(speed - naughty_speed_tas) / (double)(super_fast - naughty_speed_tas) * (double)QuoteCount;
@@ -152,19 +152,18 @@ RecordBadPlane(plane_t *plane)
 	double lat_radians, lon_radians;
 	double naughty;
 
+	// do some basic sanity checking
 	speed_alt_time_gap = plane->last_speed - plane->last_location;
 	if (speed_alt_time_gap < 0)
 		speed_alt_time_gap = -speed_alt_time_gap;
 	if (speed_alt_time_gap >= 3)
 		return; // long gap between altitude and speed recording times, might not have been speeding
-
-	if (plane->altitude <= 0)
-		return; // yikes
-
+	if (plane->altitude < 2000)
+		return; // this is almost certainly a bad squitter
 	if (plane->speed >= 600)
 		return; // bad squitter
 
-	// zone of interest is the rectangle defined by the xx_LAT,xx_LON defines plus within Y miles of ZeroLat,ZeroLon
+	// zone of interest is the rectangle defined by the xx_LAT,xx_LON defines plus anywhere within Y miles of ZeroLat,ZeroLon
 	lat_radians = DegreesToRadians(plane->latitude);
 	lon_radians = DegreesToRadians(plane->longitude);
 	dist = CalcDistance(ZeroLatRadians, ZeroLonRadians, lat_radians, lon_radians);
@@ -186,7 +185,6 @@ RecordBadPlane(plane_t *plane)
 		plane->fastest.latitude = plane->latitude;
 		plane->fastest.longitude = plane->longitude;
 	}
-
 }
 
 static void
