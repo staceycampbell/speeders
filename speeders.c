@@ -27,7 +27,7 @@
 #define FAA_SPEED_ALTITUDE 10000 // ...at or below this MSL altitude in ft
 
 // ADS-B reported speed is groundspeed via GPS unit, https://aerotoolbox.com/airspeed-conversions
-#define NAUGHTY_SPEED_CAS (FAA_SPEED_LIMIT_CAS + 15) // give them some slack
+#define NAUGHTY_SPEED_CAS (FAA_SPEED_LIMIT_CAS + 20) // give them some slack for tail wind, temperature
 #define NAUGHTY_ALTITUDE (FAA_SPEED_ALTITUDE - 1000) // give 'em a break over this altitude
 
 #define PLANE_COUNT 1024 // never more than about 70 planes visible from the casa
@@ -99,7 +99,7 @@ QuotePicker(int32_t speed, int32_t naughty_speed_tas)
 	int quote_index;
 	double quote_index_f;
 	char *quote;
-	static const int32_t super_fast = 340; // assume nobody is going much faster than this
+	static const int32_t super_fast = 335; // assume nobody is going much faster than this
 
 	// Quotes are ordered by snark. The faster the speed the snarkier the quote.
 	quote_index_f = (double)(speed - naughty_speed_tas) / (double)(super_fast - naughty_speed_tas) * (double)QuoteCount;
