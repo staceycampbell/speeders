@@ -6,16 +6,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <time.h>
 #include <libxml/xmlreader.h>
 #include "metar.h"
 
-#if 0
 static const char *AviationWeatherFormat = "https://www.aviationweather.gov/adds/dataserver_current/httpparam?"
 	"dataSource=metars&requestType=retrieve&format=xml&hoursBeforeNow=10&" "mostRecentForEachStation=constraint&stationString=";
-#endif
 
 #define XML_BUFFER_SIZE 65536
-#if 0
 static char XML_buffer[XML_BUFFER_SIZE];
 
 static int
@@ -26,17 +24,14 @@ ReceiveXMLData(void *buffer, size_t size, size_t nmemb, void *stream)
 	strncpy(XML_buffer, buffer, size);
 	return size;
 }
-#endif
 
-void
-MetarFetch(char *station, double *temp_c, double *elevation_m)
+static void
+METARFetchNow(const char *station, double *temp_c, double *elevation_m)
 {
-#if 0
 	char url[4096];
 	CURL *curlhandle;
 	CURLcode curl_status;
 	FILE *fp;
-#endif
 	xmlTextReaderPtr reader;
 	int reader_status;
 	int temp_c_next;
@@ -47,7 +42,6 @@ MetarFetch(char *station, double *temp_c, double *elevation_m)
 	*temp_c = 15.0;
 	*elevation_m = 0.0;
 
-#if 0
 	strcpy(url, AviationWeatherFormat);
 	strcat(url, station);
 
@@ -70,7 +64,7 @@ MetarFetch(char *station, double *temp_c, double *elevation_m)
 	}
 	fputs(XML_buffer, fp);
 	fclose(fp);
-#endif
+
 	reader = xmlReaderForFile(metar_fn, NULL, 0);
 	if (reader == 0)
 	{
@@ -108,4 +102,25 @@ MetarFetch(char *station, double *temp_c, double *elevation_m)
 		fprintf(stderr, "%s: parsing problem in METAR XML file %s\n", __PRETTY_FUNCTION__, metar_fn);
 		exit(1);
 	}
+}
+
+void
+METARFetch(const char *station, double *temp_c, double *elevation_m)
+{
+	time_t now, duration;
+	static double temp_c_cached = 15.0;
+	static double elevation_m_cached = 0.0;
+	static time_t last_fetch = 0;
+
+	now = time(0);
+	duration = now - last_fetch;
+	if (duration >= 15 * 60) // don't thrash the server, fetch the temp every 15 minutes
+	{
+		printf("%s METAR temperature cache stale, refreshing it now. Old %.1fC, new ", station, temp_c_cached);
+		METARFetchNow(station, &temp_c_cached, &elevation_m_cached);
+		last_fetch = now;
+		printf("%.1f (elevation %.1fm).\n", temp_c_cached, elevation_m_cached);
+	}
+	*temp_c = temp_c_cached;
+	*elevation_m = elevation_m_cached;
 }

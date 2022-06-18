@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include "castotas.h"
+#include "metar.h"
 
 // Upper left and lower right coordinates of area where speeders
 // will be reported
@@ -23,11 +24,14 @@
 #define ZERO_LON -118.5360978679256
 #define ZERO_WITHIN 6.0 // miles
 
+// https://www.aviationweather.gov/docs/metar/stations.txt
+static const char NearestMETAR[] = "KVNY"; // replace with closest METAR source
+
 #define FAA_SPEED_LIMIT_CAS 250 // FAA indicated speed limit in kt
 #define FAA_SPEED_ALTITUDE 10000 // ...at or below this MSL altitude in ft
 
 // ADS-B reported speed is groundspeed via GPS unit, https://aerotoolbox.com/airspeed-conversions
-#define NAUGHTY_SPEED_CAS (FAA_SPEED_LIMIT_CAS + 20) // give them some slack for tail wind, temperature
+#define NAUGHTY_SPEED_CAS (FAA_SPEED_LIMIT_CAS + 10) // give them some slack for tail wind
 #define NAUGHTY_ALTITUDE (FAA_SPEED_ALTITUDE - 1000) // give 'em a break over this altitude
 
 #define PLANE_COUNT 1024 // never more than about 70 planes visible from the casa
@@ -39,6 +43,7 @@ typedef struct fastest_t {
 	uint32_t initialized;
 	double naughty;
 	int32_t naughty_speed_tas;
+	int32_t estimated_faa250_tas;
 	int32_t speed;
 	int32_t altitude;
 	double distance;
@@ -61,6 +66,7 @@ typedef struct plane_t {
 	int32_t speed;
 	int32_t altitude;
 	int32_t naughty_speed_tas;
+	int32_t estimated_faa250_tas;
 	fastest_t fastest;
 } plane_t;
 
@@ -180,6 +186,7 @@ RecordBadPlane(plane_t *plane)
 		plane->fastest.speed = plane->speed;
 		plane->fastest.altitude = plane->altitude;
 		plane->fastest.naughty_speed_tas = plane->naughty_speed_tas;
+		plane->fastest.estimated_faa250_tas = plane->estimated_faa250_tas;
 		plane->fastest.seen = time(0);
 		plane->fastest.distance = dist;
 		plane->fastest.latitude = plane->latitude;
@@ -250,6 +257,7 @@ ProcessMSG3(char **pp, plane_t *plane)
 	int field;
 	int32_t altitude;
 	float lat, lon;
+	double metar_temp_c, metar_elevation_m;
 
 	field = 0;
 	while ((ch = strsep(pp, ",")) && field < 6)
@@ -277,7 +285,9 @@ ProcessMSG3(char **pp, plane_t *plane)
 	plane->altitude = altitude;
 	plane->latitude = lat;
 	plane->longitude = lon;
-	plane->naughty_speed_tas = CAStoTAS(NAUGHTY_SPEED_CAS, altitude);
+	METARFetch(NearestMETAR, &metar_temp_c, &metar_elevation_m);
+	plane->naughty_speed_tas = CAStoTAS(metar_temp_c, metar_elevation_m, NAUGHTY_SPEED_CAS, altitude);
+	plane->estimated_faa250_tas = CAStoTAS(metar_temp_c, metar_elevation_m, FAA_SPEED_LIMIT_CAS, altitude);
 }
 
 static void
@@ -347,7 +357,7 @@ ReportBadPlane(plane_t *plane, int enable_bot)
 	char command[1024];
 	static int fn_inc = 0;
 	
-	printf("%X %s %d %d %4.1f %8.4f %8.4f (nv %4.1f, tas est %d) %s",
+	printf("%X %s %d %d %4.1f %8.4f %8.4f (nv %4.1f, tas est %d, faa250 tas est %d) %s",
 	       plane->icao,
 	       plane->callsign,
 	       plane->fastest.altitude,
@@ -357,6 +367,7 @@ ReportBadPlane(plane_t *plane, int enable_bot)
 	       plane->fastest.longitude,
 	       plane->fastest.naughty,
 	       plane->fastest.naughty_speed_tas,
+	       plane->fastest.estimated_faa250_tas,
 	       ctime(&plane->fastest.seen));
 	if (enable_bot)
 	{

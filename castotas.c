@@ -2,13 +2,14 @@
 #include <math.h>
 #include <stdint.h>
 #include "castotas.h"
+#include "metar.h"
 
 // convert Calibrated Air Speed to True Air Speed
 // https://aviation.stackexchange.com/a/64251
 // cas in knots, altitude in feet
 
 int32_t
-CAStoTAS(int32_t cas, int32_t altitude)
+CAStoTAS(double metar_temp_c, double metar_elevation_m, int32_t cas, int32_t altitude)
 {
 	int32_t tas;
 	double cas_mps;
@@ -25,7 +26,9 @@ CAStoTAS(int32_t cas, int32_t altitude)
 	h = (double)altitude * 0.3048; // altitude in m
 
 	// https://www.grc.nasa.gov/www/k-12/airplane/atmosmet.html
-	T = 15.04 - L * h + 273.15; // approx static air temp in K
+	// extrapolate static air temperature at aircraft altitude using
+	// temp and elevation of nearby METAR source
+	T = metar_temp_c - L * (h - metar_elevation_m) + 273.15;
 
 	double Lh_div_T0 = (L * h) / T0;
 	double neg_gM_div_RL = -((g * M) / (R * L));
