@@ -2,3 +2,5 @@ speeders
 *.o
 test.log
 token.secret
+tb
+latestmetar.xml
