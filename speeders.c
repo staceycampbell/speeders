@@ -10,6 +10,7 @@
 #include <sys/stat.h>
 #include "castotas.h"
 #include "metar.h"
+#include "datetoepoch.h"
 
 // Upper left and lower right coordinates of area where speeders
 // will be reported
@@ -198,7 +199,7 @@ RecordBadPlane(plane_t *plane)
 		plane->fastest.altitude = plane->altitude;
 		plane->fastest.naughty_speed_tas = plane->naughty_speed_tas;
 		plane->fastest.estimated_faa250_tas = plane->estimated_faa250_tas;
-		plane->fastest.seen = time(0);
+		plane->fastest.seen = plane->last_seen;
 		plane->fastest.distance = dist;
 		plane->fastest.latitude = plane->latitude;
 		plane->fastest.longitude = plane->longitude;
@@ -259,8 +260,6 @@ FindPlane(plane_t planes[PLANE_COUNT], uint32_t icao)
 	else
 		plane = &planes[i];
 
-	plane->last_seen = time(0);
-
 	return plane;
 }
 
@@ -274,7 +273,7 @@ ProcessMSG3(char **pp, plane_t *plane)
 	double metar_temp_c, metar_elevation_m;
 
 	field = 0;
-	while ((ch = strsep(pp, ",")) && field < 6)
+	while ((ch = strsep(pp, ",")) && field < 3)
 		++field;
 	if (ch == 0)
 		return;
@@ -294,7 +293,7 @@ ProcessMSG3(char **pp, plane_t *plane)
 		return;
 	sscanf(ch, "%f", &lon);
 	
-	plane->last_location = time(0);
+	plane->last_location = plane->last_seen;
 	plane->latlong_valid = 1;
 	plane->altitude = altitude;
 	plane->latitude = lat;
@@ -312,7 +311,7 @@ ProcessMSG4(char **pp, plane_t *plane)
 	int32_t speed;
 
 	field = 0;
-	while ((ch = strsep(pp, ",")) && field < 7)
+	while ((ch = strsep(pp, ",")) && field < 4)
 		++field;
 	if (ch == 0)
 		return;
@@ -321,7 +320,7 @@ ProcessMSG4(char **pp, plane_t *plane)
 	if (speed <= 0 || speed > 3000)
 		return;
 
-	plane->last_speed = time(0);
+	plane->last_speed = plane->last_seen;
 	plane->speed = speed;
 }
 
@@ -332,19 +331,34 @@ ProcessMSG1(char **pp, plane_t *plane)
 	int field;
 
 	field = 0;
-	while ((ch = strsep(pp, ",")) && field < 5)
+	while ((ch = strsep(pp, ",")) && field < 2)
 		++field;
 	if (ch == 0 || *ch == '\0')
 		return;
 	strncpy(plane->callsign, ch, sizeof(plane->callsign) - 1);
 }
 
-static void
+static time_t
 ProcessPlane(char **pp, plane_t planes[PLANE_COUNT], uint32_t message_id, uint32_t icao)
 {
 	plane_t *plane;
+	char *ch, *date_s, *time_s;
+	time_t seen;
+
+	ch = strsep(pp, ",");
+	if (ch == 0 || *ch == '\0')
+		return -1;
+	date_s = strsep(pp, ",");
+	if (date_s == 0 || *date_s == '\0')
+		return -1;
+	time_s = strsep(pp, ",");
+	if (time_s == 0 || *time_s == '\0')
+		return -1;
+	seen = Date2Epoch(date_s, time_s);
 
 	plane = FindPlane(planes, icao);
+	plane->last_seen = seen;
+
 	switch (message_id)
 	{
 	case 1 :
@@ -357,6 +371,8 @@ ProcessPlane(char **pp, plane_t planes[PLANE_COUNT], uint32_t message_id, uint32
 		ProcessMSG4(pp, plane);
 		break;
 	}
+
+	return seen;
 }
 
 static void
@@ -426,13 +442,12 @@ ReportBadPlane(plane_t *plane, int enable_bot)
 
 
 static void
-CleanPlanes(plane_t planes[PLANE_COUNT], int enable_bot)
+CleanPlanes(plane_t planes[PLANE_COUNT], time_t now, int enable_bot)
 {
 	int i;
 	uint32_t plane_count;
-	time_t now, duration;
+	time_t duration;
 
-	now = time(0);
 	plane_count = 0;
 	for (i = 0; i < PlaneListCount; ++i)
 	{
@@ -485,6 +500,7 @@ main(int argc, char *argv[])
 {
 	int i, opt, enable_bot, usage;
 	uint32_t message_id, icao;
+	time_t seen, receiver_now;
 	char buffer[1024];
 	char *p;
 	char *ch;
@@ -530,6 +546,7 @@ main(int argc, char *argv[])
 	ZeroLonRadians = DegreesToRadians(ZERO_LON);
 	DataStats.next = time(0) + DATA_STATS_DURATION;
 
+	receiver_now = time(0); // stop optimizer from complaining
 	while (fgets(buffer, sizeof(buffer), stdin))
 	{
 		p = buffer;
@@ -549,12 +566,14 @@ main(int argc, char *argv[])
 					{
 						ch = strsep(&p, ",");
 						icao = strtoul(ch, 0, 16);
-						ProcessPlane(&p, planes, message_id, icao);
+						seen = ProcessPlane(&p, planes, message_id, icao);
+						if (seen != -1)
+							receiver_now = seen;
 					}
 				}
 			}
 		}
-		CleanPlanes(planes, enable_bot);
+		CleanPlanes(planes, receiver_now, enable_bot);
 		DetectBadPlanes(planes);
 		ReportDataStats();
 	}
