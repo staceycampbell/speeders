@@ -108,18 +108,19 @@ void
 METARFetch(const char *station, double *temp_c, double *elevation_m)
 {
 	time_t now, duration;
+	double old_temp;
 	static double temp_c_cached = 15.0;
 	static double elevation_m_cached = 0.0;
 	static time_t last_fetch = 0;
 
 	now = time(0);
 	duration = now - last_fetch;
-	if (duration >= 20 * 60) // don't thrash the server, fetch the temp every 20 minutes
+	if (duration >= 30 * 60) // don't thrash the server, fetch the temp every 30 minutes
 	{
-		printf("%s METAR temperature cache stale, refreshing it now. Old %.1fC, new ", station, temp_c_cached);
+		old_temp = temp_c_cached;
 		METARFetchNow(station, &temp_c_cached, &elevation_m_cached);
 		last_fetch = now;
-		printf("%.1fC (elevation %.1fm).\n", temp_c_cached, elevation_m_cached);
+		printf("%s (elevation %.1fm) METAR refresh. Old %.1fC, new %.1fC.\n", station, elevation_m_cached, old_temp, temp_c_cached);
 	}
 	*temp_c = temp_c_cached;
 	*elevation_m = elevation_m_cached;
