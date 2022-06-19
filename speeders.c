@@ -37,6 +37,8 @@ static const char NearestMETAR[] = "KVNY"; // replace with closest METAR source
 #define PLANE_COUNT 1024 // never more than about 70 planes visible from the casa
 #define CALLSIGN_LEN 16
 
+#define DATA_STATS_DURATION (60 * 60) // every minute
+
 static const char BotToken[] = "token.secret";
 
 typedef struct fastest_t {
@@ -69,6 +71,15 @@ typedef struct plane_t {
 	int32_t estimated_faa250_tas;
 	fastest_t fastest;
 } plane_t;
+
+typedef struct data_stats_t {
+	uint32_t message_count;
+	uint32_t max_plane_count;
+	uint32_t flight_count;
+	time_t next;
+} data_stats_t;
+
+static data_stats_t DataStats;
 
 static int PlaneListCount;
 static double ZeroLatRadians, ZeroLonRadians;
@@ -241,7 +252,10 @@ FindPlane(plane_t planes[PLANE_COUNT], uint32_t icao)
 	while (i < PlaneListCount && ! (planes[i].icao == icao && planes[i].valid))
 		++i;
 	if (i == PlaneListCount)
+	{
 		plane = InsertPlane(planes, icao);
+		++DataStats.flight_count;
+	}
 	else
 		plane = &planes[i];
 
@@ -415,13 +429,16 @@ static void
 CleanPlanes(plane_t planes[PLANE_COUNT], int enable_bot)
 {
 	int i;
+	uint32_t plane_count;
 	time_t now, duration;
 
 	now = time(0);
+	plane_count = 0;
 	for (i = 0; i < PlaneListCount; ++i)
 	{
 		if (planes[i].valid)
 		{
+			++plane_count;
 			duration = now - planes[i].last_seen;
 			if (duration > 10)
 			{
@@ -431,6 +448,36 @@ CleanPlanes(plane_t planes[PLANE_COUNT], int enable_bot)
 			}
 		}
 	}
+	if (plane_count > DataStats.max_plane_count)
+		DataStats.max_plane_count = plane_count;
+}
+
+static void
+ReportDataStats(void)
+{
+	int i, len;
+	time_t now;
+	char buffer[256];
+
+	now = time(0);
+	if (DataStats.next > now)
+		return;
+
+	strcpy(buffer, ctime(&now));
+	len = strlen(buffer);
+	for (i = 0; i < len; ++i)
+		if (buffer[i] == '\n')
+			buffer[i] = '\0';
+	printf("Hourly report %s:\n", buffer);
+	printf("%25s: %.1f\n", "messages / sec", (double)DataStats.message_count / (double)DATA_STATS_DURATION);
+	printf("%25s: %d\n", "max concurrent flights", DataStats.max_plane_count);
+	printf("%25s: %d\n", "new flights", DataStats.flight_count);
+	printf("%25s: %d\n", "plane list size", PlaneListCount);
+
+	DataStats.message_count = 0;
+	DataStats.max_plane_count = 0;
+	DataStats.flight_count = 0;
+	DataStats.next = now + DATA_STATS_DURATION;
 }
 
 int
@@ -481,6 +528,7 @@ main(int argc, char *argv[])
 	PlaneListCount = 0;
 	ZeroLatRadians = DegreesToRadians(ZERO_LAT);
 	ZeroLonRadians = DegreesToRadians(ZERO_LON);
+	DataStats.next = time(0) + DATA_STATS_DURATION;
 
 	while (fgets(buffer, sizeof(buffer), stdin))
 	{
@@ -488,6 +536,7 @@ main(int argc, char *argv[])
 		ch = strsep(&p, ",");
 		if (ch && strncmp(ch, "MSG", 3) == 0)
 		{
+			++DataStats.message_count;
 			ch = strsep(&p, ",");
 			if (ch)
 			{
@@ -507,6 +556,7 @@ main(int argc, char *argv[])
 		}
 		CleanPlanes(planes, enable_bot);
 		DetectBadPlanes(planes);
+		ReportDataStats();
 	}
 
 	return 0;
