@@ -22,13 +22,13 @@ CAStoTAS(double metar_temp_c, double metar_elevation_m, int32_t cas, int32_t alt
 	static const double R = 8.31446261815324; // J/(mol⋅K) is the universal gas constant,
 	static const double T0 = 288.15; // K is the static air temperature at sea level in the ISA.
 
-	cas_mps = (double)cas * 0.514444; // calibrate airspeed m/s
+	cas_mps = (double)cas * 0.514444; // calibrated airspeed m/s
 	h = (double)altitude * 0.3048; // altitude in m
 
 	// https://www.grc.nasa.gov/www/k-12/airplane/atmosmet.html
 	// extrapolate static air temperature at aircraft altitude using
 	// temp and elevation of nearby METAR source
-	T = metar_temp_c - L * (h - metar_elevation_m) + 273.15;
+	T = metar_temp_c - L * (h - metar_elevation_m) + 273.15; // K
 
 	double Lh_div_T0 = (L * h) / T0;
 	double neg_gM_div_RL = -((g * M) / (R * L));

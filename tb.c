@@ -15,7 +15,7 @@ main(void)
 	printf("Temp at %s is %.1f, elevation is %.1f\n", station, temp_c, elevation_m);
 #endif
 	
-	cas = 250; // aircraft calibrate air speed
+	cas = 250; // aircraft calibrated air speed
 	elevation_m = 241.0; // METAR station elevation
 	altitude = 5000; // aircraft altitude
 	for (temp_c = 10.0; temp_c <= 50.0; temp_c += 1)
