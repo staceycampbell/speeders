@@ -32,7 +32,7 @@ static const char NearestMETAR[] = "KVNY"; // replace with closest METAR source
 #define FAA_SPEED_ALTITUDE 10000 // ...at or below this MSL altitude in ft
 
 // ADS-B reported speed is groundspeed via GPS unit, https://aerotoolbox.com/airspeed-conversions
-#define NAUGHTY_SPEED_CAS (FAA_SPEED_LIMIT_CAS + 5) // give them some slack for tail wind, already adjusted for temperature
+#define NAUGHTY_SPEED_CAS (FAA_SPEED_LIMIT_CAS + 10) // give them some slack for tail wind, already adjusted for temperature
 #define NAUGHTY_ALTITUDE (FAA_SPEED_ALTITUDE - 500) // give 'em a break over this altitude
 
 #define PLANE_COUNT 1024 // never more than about 70 planes visible from the casa
