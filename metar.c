@@ -10,6 +10,7 @@
 #include <libxml/xmlreader.h>
 #include "metar.h"
 
+// https://www.aviationweather.gov/dataserver
 static const char *AviationWeatherFormat = "https://www.aviationweather.gov/adds/dataserver_current/httpparam?"
 	"dataSource=metars&requestType=retrieve&format=xml&hoursBeforeNow=10&" "mostRecentForEachStation=constraint&stationString=";
 
@@ -38,9 +39,16 @@ METARFetchNow(const char *station, double *temp_c, double *elevation_m)
 	int elevation_m_next;
 	const xmlChar *name, *value;
 	static const char *metar_fn = "latestmetar.xml";
+	static uint32_t initialized = 0;
 
-	*temp_c = 15.0;
-	*elevation_m = 0.0;
+	if (! initialized)
+	{
+		// standard values until METAR data becomes available
+		// https://www.grc.nasa.gov/www/k-12/airplane/atmosmet.html
+		*temp_c = 15.0;
+		*elevation_m = 0.0;
+		initialized = 1;
+	}
 
 	strcpy(url, AviationWeatherFormat);
 	strcat(url, station);
