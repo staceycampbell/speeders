@@ -35,12 +35,12 @@ CAStoTAS(double metar_temp_c, double metar_elevation_m, int32_t cas, int32_t alt
 	double cas_squared_div_5a0_squared = pow(cas_mps, 2.0) / (5.0 * pow(a0, 2.0));
 	double sevenRT_div_M = (7.0 * R * T) / M;
 
-	double exp0 = pow(cas_squared_div_5a0_squared + 1, 7.0 / 2.0) - 1;
-	double exp1 = pow(1.0 - Lh_div_T0, neg_gM_div_RL);
-	double exp2 = exp0 * exp1 + 1;
-	double exp3 = pow(exp2, 2.0 / 7.0) - 1;
-	double exp4 = sevenRT_div_M * exp3;
-	double tas_mps = sqrt(exp4);
+	double expr0 = pow(cas_squared_div_5a0_squared + 1, 7.0 / 2.0) - 1;
+	double expr1 = pow(1.0 - Lh_div_T0, neg_gM_div_RL);
+	double expr2 = expr0 * expr1 + 1;
+	double expr3 = pow(expr2, 2.0 / 7.0) - 1;
+	double expr4 = sevenRT_div_M * expr3;
+	double tas_mps = sqrt(expr4);
 
 	tas = tas_mps * 1.94384 + 0.5; // m/s to knots
 
