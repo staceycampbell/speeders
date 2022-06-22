@@ -38,7 +38,7 @@ static const char NearestMETAR[] = "KVNY"; // replace with closest METAR source
 #define PLANE_COUNT 1024 // never more than about 70 planes visible from the casa
 #define CALLSIGN_LEN 16
 
-#define DATA_STATS_DURATION (60 * 60) // every minute
+#define DATA_STATS_DURATION (60 * 60) // report some stats every hour
 
 static const char BotToken[] = "token.secret";
 
