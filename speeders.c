@@ -468,7 +468,7 @@ CleanPlanes(plane_t planes[PLANE_COUNT], time_t now, int enable_bot)
 }
 
 static void
-ReportDataStats(void)
+ReportDataStats(plane_t planes[PLANE_COUNT])
 {
 	int i, len;
 	time_t now;
@@ -487,12 +487,19 @@ ReportDataStats(void)
 	printf("%25s: %.1f\n", "messages / sec", (double)DataStats.message_count / (double)DATA_STATS_DURATION);
 	printf("%25s: %d\n", "max concurrent flights", DataStats.max_plane_count);
 	printf("%25s: %d\n", "new flights", DataStats.flight_count);
-	printf("%25s: %d\n", "plane list size", PlaneListCount);
+	printf("%25s: %d\n", "plane list count", PlaneListCount);
 
 	DataStats.message_count = 0;
 	DataStats.max_plane_count = 0;
 	DataStats.flight_count = 0;
+
 	DataStats.next = now + DATA_STATS_DURATION;
+
+	i = PlaneListCount - 1;
+	while (i >= 0 && ! planes[i].valid)
+		--i;
+	PlaneListCount = i + 1;
+	printf("%25s: %d\n", "trimmed count", PlaneListCount);
 }
 
 int
@@ -575,7 +582,7 @@ main(int argc, char *argv[])
 		}
 		CleanPlanes(planes, receiver_now, enable_bot);
 		DetectBadPlanes(planes);
-		ReportDataStats();
+		ReportDataStats(planes);
 	}
 
 	return 0;
