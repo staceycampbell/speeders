@@ -444,11 +444,12 @@ ReportBadPlane(plane_t *plane, int enable_bot)
 static void
 CleanPlanes(plane_t planes[PLANE_COUNT], time_t now, int enable_bot)
 {
-	int i;
+	int i, last_valid_plane;
 	uint32_t plane_count;
 	time_t duration;
 
 	plane_count = 0;
+	last_valid_plane = PlaneListCount - 1;
 	for (i = 0; i < PlaneListCount; ++i)
 	{
 		if (planes[i].valid)
@@ -461,10 +462,13 @@ CleanPlanes(plane_t planes[PLANE_COUNT], time_t now, int enable_bot)
 					ReportBadPlane(&planes[i], enable_bot);
 				planes[i].valid = 0;
 			}
+			else
+				last_valid_plane = i;
 		}
 	}
 	if (plane_count > DataStats.max_plane_count)
 		DataStats.max_plane_count = plane_count;
+	PlaneListCount = last_valid_plane + 1;
 }
 
 static void
@@ -494,12 +498,6 @@ ReportDataStats(plane_t planes[PLANE_COUNT])
 	DataStats.flight_count = 0;
 
 	DataStats.next = now + DATA_STATS_DURATION;
-
-	i = PlaneListCount - 1;
-	while (i >= 0 && ! planes[i].valid)
-		--i;
-	PlaneListCount = i + 1;
-	printf("%25s: %d\n", "trimmed count", PlaneListCount);
 }
 
 int
