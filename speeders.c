@@ -133,7 +133,7 @@ QuotePicker(int32_t speed, int32_t naughty_speed_tas)
 }
 
 static double
-DegreesToRadians(double d)
+deg2rad(double d)
 {
 	double r;
 
@@ -182,8 +182,8 @@ RecordBadPlane(plane_t *plane)
 		return; // bad squitter
 
 	// zone of interest is the rectangle defined by the xx_LAT,xx_LON defines plus anywhere within Y miles of ZeroLat,ZeroLon
-	lat_radians = DegreesToRadians(plane->latitude);
-	lon_radians = DegreesToRadians(plane->longitude);
+	lat_radians = deg2rad(plane->latitude);
+	lon_radians = deg2rad(plane->longitude);
 	dist = CalcDistance(ZeroLatRadians, ZeroLonRadians, lat_radians, lon_radians);
 	if ((plane->latitude > NW_LAT || plane->latitude < SE_LAT || plane->longitude > SE_LON || plane->longitude < NW_LON) &&
 	    dist > ZERO_WITHIN) // miles
@@ -440,7 +440,6 @@ ReportBadPlane(plane_t *plane, int enable_bot)
 	}
 }
 
-
 static void
 CleanPlanes(plane_t planes[PLANE_COUNT], time_t now, int enable_bot)
 {
@@ -547,8 +546,8 @@ main(int argc, char *argv[])
 	for (i = 0; i < PLANE_COUNT; ++i)
 		planes[i].valid = 0;
 	PlaneListCount = 0;
-	ZeroLatRadians = DegreesToRadians(ZERO_LAT);
-	ZeroLonRadians = DegreesToRadians(ZERO_LON);
+	ZeroLatRadians = deg2rad(ZERO_LAT);
+	ZeroLonRadians = deg2rad(ZERO_LON);
 	DataStats.next = time(0) + DATA_STATS_DURATION;
 
 	receiver_now = time(0); // stop optimizer from complaining
