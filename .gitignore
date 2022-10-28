@@ -1,6 +1,6 @@
 speeders
 *.o
-test.log
+test.log*
 token.secret
 tb
 latestmetar.xml
