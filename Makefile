@@ -11,7 +11,7 @@ speeders: speeders.o $(OBJS)
 tb: tb.o $(OBJS)
 
 test: speeders
-	nc bilby 30003 | stdbuf -oL speeders -b | stdbuf -oL tee test.log
+	nc localhost 30003 | stdbuf -oL speeders -b | stdbuf -oL tee test.log
 
 clean:
 	rm -f speeders speeders.o tb tb.o $(OBJS) test.log
