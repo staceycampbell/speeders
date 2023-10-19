@@ -48,5 +48,5 @@ flies out of range.
 
 Projected static air temperature is calculated using the standard formula.
 Inputs for that formula are acquired from the
-[Aviation Weather Center Text Data Server](https://www.aviationweather.gov/dataserver)
+[Aviation Weather Center Text Data Server](https://aviationweather.gov)
 every 30 minutes.
