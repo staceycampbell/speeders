@@ -7,12 +7,18 @@
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
+#include <inttypes.h>
 #include <libxml/xmlreader.h>
 #include "metar.h"
 
-// https://www.aviationweather.gov/dataserver
-static const char *AviationWeatherFormat = "https://www.aviationweather.gov/adds/dataserver_current/httpparam?"
-	"dataSource=metars&requestType=retrieve&format=xml&hoursBeforeNow=10&" "mostRecentForEachStation=constraint&stationString=";
+static const char *AviationWeatherFormat = "https://aviationweather.gov/cgi-bin/data/dataserver.php?"
+	"requestType=retrieve&"
+	"dataSource=metars&"
+	"stationString=%s"
+	"&startTime=" PRIu64 "&"
+	"hoursBeforeNow=0&"
+	"format=xml&"
+	"mostRecent=true";
 
 #define XML_BUFFER_SIZE 65536
 static char XML_buffer[XML_BUFFER_SIZE];
@@ -27,7 +33,7 @@ ReceiveXMLData(void *buffer, size_t size, size_t nmemb, void *stream)
 }
 
 static void
-METARFetchNow(const char *station, double *temp_c, double *elevation_m)
+METARFetchNow(const char *station, time_t now, double *temp_c, double *elevation_m)
 {
 	char url[4096];
 	CURL *curlhandle;
@@ -50,8 +56,7 @@ METARFetchNow(const char *station, double *temp_c, double *elevation_m)
 		initialized = 1;
 	}
 
-	strcpy(url, AviationWeatherFormat);
-	strcat(url, station);
+	sprintf(url, AviationWeatherFormat, station, (uint64_t)now);
 
 	curlhandle = curl_easy_init();
 	curl_easy_setopt(curlhandle, CURLOPT_URL, url);
@@ -126,7 +131,7 @@ METARFetch(const char *station, double *temp_c, double *elevation_m)
 	if (duration >= 30 * 60) // don't thrash the server, fetch the temp every 30 minutes
 	{
 		old_temp = temp_c_cached;
-		METARFetchNow(station, &temp_c_cached, &elevation_m_cached);
+		METARFetchNow(station, now, &temp_c_cached, &elevation_m_cached);
 		last_fetch = now;
 		printf("%s (elevation %.1fm) METAR refresh. Old %.1fC, new %.1fC.\n", station, elevation_m_cached, old_temp, temp_c_cached);
 	}

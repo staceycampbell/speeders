@@ -1,5 +1,5 @@
 CC := cc
-CFLAGS := -I/usr/include/libxml2 -O3 -mtune=native -Wall -Wno-dangling-else
+CFLAGS := -I/usr/include/libxml2 -O2 -Wall -Wno-dangling-else
 LDLIBS := -lm -lcurl -lxml2
 
 OBJS := castotas.o metar.o datetoepoch.o
