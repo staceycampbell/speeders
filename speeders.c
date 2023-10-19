@@ -421,7 +421,8 @@ ReportBadPlane(plane_t *plane, int enable_bot)
 		fprintf(fp,
 			"mastodon.status_post(\"BLEEP BLOOP: I just saw an aircraft with callsign #%s (ICAO code #%06X) flying at %d kt "
 			"at altitude %d feet MSL at coordinates %8.4f,%8.4f.\\n\\n%s\\n\\n"
-			"https://globe.adsbexchange.com/?icao=%x\\nhttps://www.openstreetmap.org/?mlat=%.4f&mlon=%.4f#map=15/%.4f/%.4f\")\n",
+			"https://globe.adsb.fi/?icao=%x\\n"
+			"https://www.openstreetmap.org/?mlat=%.4f&mlon=%.4f#map=15/%.4f/%.4f\")\n",
 			callsign_trimmed,
 			plane->icao,
 			plane->fastest.speed,
