@@ -32,7 +32,7 @@ ReceiveXMLData(void *buffer, size_t size, size_t nmemb, void *stream)
 	return size;
 }
 
-static void
+static int
 METARFetchNow(const char *station, time_t now, double *temp_c, double *elevation_m)
 {
 	char url[4096];
@@ -67,12 +67,12 @@ METARFetchNow(const char *station, time_t now, double *temp_c, double *elevation
 	if (curl_status)
 	{
 		fprintf(stderr, "%s: curl error %d for %s\n", __PRETTY_FUNCTION__, curl_status, url);
-		return;
+		return -1;
 	}
 
 	if ((fp = fopen(metar_fn, "w")) == 0)
 	{
-		fprintf(stderr, "%s: error, cannot write METAR XML\n", __PRETTY_FUNCTION__);
+		fprintf(stderr, "%s: error, cannot write METAR XML %s\n", __PRETTY_FUNCTION__, metar_fn);
 		exit(1);
 	}
 	fputs(XML_buffer, fp);
@@ -111,17 +111,16 @@ METARFetchNow(const char *station, time_t now, double *temp_c, double *elevation
 	}
 	xmlFreeTextReader(reader);
 	if (reader_status != 0)
-	{
-		fprintf(stderr, "%s: parsing problem in METAR XML file %s\n", __PRETTY_FUNCTION__, metar_fn);
-		exit(1);
-	}
+		fprintf(stderr, "Warning: %s parsing problem in METAR XML file %s\n", __PRETTY_FUNCTION__, metar_fn);
+
+	return reader_status;
 }
 
 void
 METARFetch(const char *station, double *temp_c, double *elevation_m)
 {
 	time_t now, duration;
-	double old_temp;
+	double old_temp, new_temp, new_elevation;
 	static double temp_c_cached = 15.0;
 	static double elevation_m_cached = 0.0;
 	static time_t last_fetch = 0;
@@ -131,7 +130,12 @@ METARFetch(const char *station, double *temp_c, double *elevation_m)
 	if (duration >= 30 * 60) // don't thrash the server, fetch the temp every 30 minutes
 	{
 		old_temp = temp_c_cached;
-		METARFetchNow(station, now, &temp_c_cached, &elevation_m_cached);
+		// Deal with occasional empty or bad xml from data server
+		if (METARFetchNow(station, now, &new_temp, &new_elevation) == 0)
+		{
+			temp_c_cached = new_temp;
+			elevation_m_cached = new_elevation;
+		}
 		last_fetch = now;
 		printf("%s (elevation %.1fm) METAR refresh. Old %.1fC, new %.1fC.\n", station, elevation_m_cached, old_temp, temp_c_cached);
 	}
