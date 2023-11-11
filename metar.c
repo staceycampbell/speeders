@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <time.h>
 #include <inttypes.h>
+#include <assert.h>
 #include <libxml/xmlreader.h>
 #include "metar.h"
 
@@ -22,13 +23,17 @@ static const char *AviationWeatherFormat = "https://aviationweather.gov/cgi-bin/
 
 #define XML_BUFFER_SIZE 65536
 static char XML_buffer[XML_BUFFER_SIZE];
+static int XML_buffer_index;
 
 static int
 ReceiveXMLData(void *buffer, size_t size, size_t nmemb, void *stream)
 {
 	size *= nmemb;
+	assert(XML_buffer_index + size < XML_BUFFER_SIZE);
 	size = (size <= XML_BUFFER_SIZE) ? size : XML_BUFFER_SIZE;
-	strncpy(XML_buffer, buffer, size);
+	strncpy(&XML_buffer[XML_buffer_index], buffer, size);
+	XML_buffer_index += size;
+
 	return size;
 }
 
@@ -56,6 +61,7 @@ METARFetchNow(const char *station, time_t now, double *temp_c, double *elevation
 		initialized = 1;
 	}
 
+	XML_buffer_index = 0;
 	sprintf(url, AviationWeatherFormat, station, (uint64_t)now);
 
 	curlhandle = curl_easy_init();
