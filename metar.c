@@ -25,19 +25,18 @@ static const char *AviationWeatherFormat = "https://aviationweather.gov/cgi-bin/
 static char XML_buffer[XML_BUFFER_SIZE];
 static int XML_buffer_index;
 
-static int
+static size_t
 ReceiveXMLData(void *buffer, size_t size, size_t nmemb, void *stream)
 {
 	size *= nmemb;
 	assert(XML_buffer_index + size < XML_BUFFER_SIZE);
-	size = (size <= XML_BUFFER_SIZE) ? size : XML_BUFFER_SIZE;
 	strncpy(&XML_buffer[XML_buffer_index], buffer, size);
 	XML_buffer_index += size;
 
 	return size;
 }
 
-static int
+static int32_t
 METARFetchNow(const char *station, time_t now, double *temp_c, double *elevation_m)
 {
 	char url[4096];
