@@ -380,6 +380,7 @@ ReportBadPlane(plane_t *plane, int enable_bot)
 {
 	FILE *fp;
 	char *quote;
+	char *visibility;
 	int i;
 	int system_status;
 	char callsign_trimmed[CALLSIGN_LEN];
@@ -415,6 +416,11 @@ ReportBadPlane(plane_t *plane, int enable_bot)
 				callsign_trimmed[i] = '\0';
 		
 		quote = QuotePicker(plane->fastest.speed, plane->fastest.naughty_speed_tas);
+
+		if (plane->fastest.naughty < 3.0)
+			visibility = "unlisted";
+		else
+			visibility = "public";
 		
 		fprintf(fp, "from mastodon import Mastodon\n");
 		fprintf(fp, "mastodon = Mastodon(\n    access_token = '%s',\n    api_base_url = 'https://botsin.space/'\n)\n", BotToken);
@@ -422,7 +428,7 @@ ReportBadPlane(plane_t *plane, int enable_bot)
 			"mastodon.status_post(\"BLEEP BLOOP: I just saw an aircraft with callsign #%s (ICAO code #%06X) flying at %d kt "
 			"at altitude %d feet MSL at coordinates %8.4f,%8.4f.\\n\\n%s\\n\\n"
 			"https://globe.adsb.fi/?icao=%x\\n"
-			"https://www.openstreetmap.org/?mlat=%.4f&mlon=%.4f#map=15/%.4f/%.4f\", visibility=\"public\")\n",
+			"https://www.openstreetmap.org/?mlat=%.4f&mlon=%.4f#map=15/%.4f/%.4f\", visibility=\"%s\")\n",
 			callsign_trimmed,
 			plane->icao,
 			plane->fastest.speed,
@@ -434,7 +440,8 @@ ReportBadPlane(plane_t *plane, int enable_bot)
 			plane->fastest.latitude,
 			plane->fastest.longitude,
 			plane->fastest.latitude,
-			plane->fastest.longitude);
+			plane->fastest.longitude,
+			visibility);
 		fclose(fp);
 		sprintf(command, "/usr/bin/python3 %s", filename);
 		system_status = system(command);
