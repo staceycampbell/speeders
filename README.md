@@ -17,7 +17,9 @@ Especially over the roof of my house.
 ## Prerequisites
 
 ```shell
-sudo apt install libcurl4-openssl-dev libxml2-dev python3
+sudo apt install libcurl4-openssl-dev libxml2-dev python3 python3-pip
+sudo mv /usr/lib/python3.11/EXTERNALLY-MANAGED /usr/lib/python3.11/EXTERNALLY-MANAGED.old
+pip3 install Mastodon.py
 ```
 
 Curl is used to fetch weather data, XML to extract that data. Python3
