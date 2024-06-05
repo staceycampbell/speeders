@@ -52,6 +52,9 @@ typedef struct fastest_t {
 	double distance;
 	float latitude;
 	float longitude;
+	float prev_latitude;
+	float prev_longitude;
+        double squitter_distance;
 	time_t seen;
 } fastest_t;
 
@@ -66,6 +69,8 @@ typedef struct plane_t {
 	uint32_t latlong_valid;
 	float latitude;
 	float longitude;
+	float prev_latitude;
+	float prev_longitude;
 	int32_t speed;
 	int32_t altitude;
 	int32_t naughty_speed_tas;
@@ -169,6 +174,11 @@ RecordBadPlane(plane_t *plane)
 	double dist;
 	double lat_radians, lon_radians;
 	double naughty;
+        double squitter_distance;
+
+        // plane location in radians
+	lat_radians = deg2rad(plane->latitude);
+	lon_radians = deg2rad(plane->longitude);
 
 	// do some basic sanity checking
 	speed_alt_time_gap = plane->last_speed - plane->last_location;
@@ -177,17 +187,20 @@ RecordBadPlane(plane_t *plane)
 	if (speed_alt_time_gap >= 3)
 		return; // long gap between altitude and speed recording times, might not have been speeding
 	if (plane->altitude < 2000)
-		return; // this is almost certainly a bad squitter
-	if (plane->speed >= 600)
-		return; // bad squitter
-
+		return; // likely bad altitude in squitter
+	if (plane->speed >= 400)
+		return; // bad speed in squitter
 	// zone of interest is the rectangle defined by the xx_LAT,xx_LON defines plus anywhere within Y miles of ZeroLat,ZeroLon
-	lat_radians = deg2rad(plane->latitude);
-	lon_radians = deg2rad(plane->longitude);
 	dist = CalcDistance(ZeroLatRadians, ZeroLonRadians, lat_radians, lon_radians);
 	if ((plane->latitude > NW_LAT || plane->latitude < SE_LAT || plane->longitude > SE_LON || plane->longitude < NW_LON) &&
 	    dist > ZERO_WITHIN) // miles
 		return; // outside the zone of interest
+        squitter_distance = CalcDistance(lat_radians, lon_radians, deg2rad(plane->prev_latitude), deg2rad(plane->prev_longitude));
+        if (squitter_distance >= 4 /* miles */)
+        {
+                printf("squitter_distance (%f) fails sanity check\n", squitter_distance);
+                return; // bad lat or lon in this or previous squitter
+        }
 	
 	naughty = ((double)plane->speed - (double)plane->naughty_speed_tas) / (double)plane->naughty_speed_tas;
 	naughty *= 100.0;
@@ -203,6 +216,9 @@ RecordBadPlane(plane_t *plane)
 		plane->fastest.distance = dist;
 		plane->fastest.latitude = plane->latitude;
 		plane->fastest.longitude = plane->longitude;
+		plane->fastest.prev_latitude = plane->prev_latitude;
+		plane->fastest.prev_longitude = plane->prev_longitude;
+                plane->fastest.squitter_distance = squitter_distance;
 	}
 }
 
@@ -212,7 +228,9 @@ DetectBadPlanes(plane_t planes[PLANE_COUNT])
 	int i;
 
 	for (i = 0; i < PlaneListCount; ++i)
-		if (planes[i].valid && planes[i].latlong_valid && planes[i].altitude <= NAUGHTY_ALTITUDE &&
+		if (planes[i].valid &&
+                    planes[i].latlong_valid > 1 &&
+                    planes[i].altitude <= NAUGHTY_ALTITUDE &&
 		    planes[i].speed >= planes[i].naughty_speed_tas)
 			RecordBadPlane(&planes[i]);
 }
@@ -294,10 +312,15 @@ ProcessMSG3(char **pp, plane_t *plane)
 	sscanf(ch, "%f", &lon);
 	
 	plane->last_location = plane->last_seen;
-	plane->latlong_valid = 1;
 	plane->altitude = altitude;
+        if (plane->latlong_valid > 0)
+        {
+                plane->prev_latitude = plane->latitude;
+                plane->prev_longitude = plane->longitude;
+        }
 	plane->latitude = lat;
 	plane->longitude = lon;
+	++plane->latlong_valid;
 	METARFetch(NearestMETAR, &metar_temp_c, &metar_elevation_m);
 	plane->naughty_speed_tas = CAStoTAS(metar_temp_c, metar_elevation_m, NAUGHTY_SPEED_CAS, altitude);
 	plane->estimated_faa250_tas = CAStoTAS(metar_temp_c, metar_elevation_m, FAA_SPEED_LIMIT_CAS, altitude);
@@ -388,7 +411,7 @@ ReportBadPlane(plane_t *plane, int enable_bot)
 	char command[1024];
 	static int fn_inc = 0;
 	
-	printf("%06X %s %d %d %4.1f %8.4f %8.4f (nv %4.1f, tas est %d, faa250 tas est %d) %s",
+	printf("%06X %s %d %d %4.1f %8.4f %8.4f [%8.4f %8.4f, %3.2f] (nv %4.1f, tas est %d, faa250 tas est %d) %s",
 	       plane->icao,
 	       plane->callsign,
 	       plane->fastest.altitude,
@@ -396,6 +419,9 @@ ReportBadPlane(plane_t *plane, int enable_bot)
 	       plane->fastest.distance,
 	       plane->fastest.latitude,
 	       plane->fastest.longitude,
+	       plane->fastest.prev_latitude,
+	       plane->fastest.prev_longitude,
+               plane->fastest.squitter_distance,
 	       plane->fastest.naughty,
 	       plane->fastest.naughty_speed_tas,
 	       plane->fastest.estimated_faa250_tas,
