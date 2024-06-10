@@ -197,10 +197,7 @@ RecordBadPlane(plane_t *plane)
 		return; // outside the zone of interest
         squitter_distance = CalcDistance(lat_radians, lon_radians, deg2rad(plane->prev_latitude), deg2rad(plane->prev_longitude));
         if (squitter_distance >= 4 /* miles */)
-        {
-                printf("squitter_distance (%f) fails sanity check\n", squitter_distance);
                 return; // bad lat or lon in this or previous squitter
-        }
 	
 	naughty = ((double)plane->speed - (double)plane->naughty_speed_tas) / (double)plane->naughty_speed_tas;
 	naughty *= 100.0;
